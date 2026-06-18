@@ -52,7 +52,7 @@ const CREATORS = [
   { name:"pixel hana",    handle:"@pixel.hana",   avatar:"PH", color:"#f59e0b", activity:61 },
 ];
 
-export default function SkyDeck() {
+export default function OshiPulse() {
   const getSystemDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
   const [themeMode, setThemeMode]   = useState<"auto"|"dark"|"light">("auto");
   const [systemDark, setSystemDark] = useState(false);
@@ -118,8 +118,8 @@ export default function SkyDeck() {
       {/* ヘッダー */}
       <div style={{ background:surface, borderBottom:`0.5px solid ${border}`, padding:"0 20px", display:"flex", alignItems:"center", justifyContent:"space-between", height:52, position:"sticky", top:0, zIndex:100, transition:"background 0.3s" }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:18, color:accent }}>Sky</span>
-          <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:18, color:text }}>Deck</span>
+          <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:18, color:accent }}>Oshi</span>
+          <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:18, color:text }}>Pulse</span>
           <span style={{ fontSize:10, background:neonDim, color:neonText, border:`0.5px solid ${neonBorder}`, padding:"2px 7px", borderRadius:20, fontFamily:"'Space Mono',monospace", marginLeft:4 }}>BETA</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
