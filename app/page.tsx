@@ -1,21 +1,53 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+
 const I18N = {
-  ja: { search:"クリエイターやキーワードを検索...",searchBtn:"検索",tabs:["フィード","アラート (2)","カレンダー"],radar:"推しレーダー",prediction:"次の投稿予測",predictionSub:"約 2時間後に投稿の予測",mood:"今週の推しムード",moodDays:["月","火","水","木","金","土","日"],themeAuto:"自動",themeDark:"ダーク",themeLight:"ライト" },
-  en: { search:"Search creators or keywords on Bluesky...",searchBtn:"Search",tabs:["Feed","Alerts (2)","Calendar"],radar:"Oshi Radar",prediction:"Next Post Prediction",predictionSub:"Expected in about 2 hours",mood:"This Week's Mood",moodDays:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],themeAuto:"Auto",themeDark:"Dark",themeLight:"Light" },
+  ja: { search:"キーワードを検索...",searchBtn:"検索",tabs:["フィード","検索結果","カレンダー"],radar:"推しレーダー",prediction:"次の投稿予測",predictionSub:"約 2時間後に投稿の予測",mood:"今週の推しムード",moodDays:["月","火","水","木","金","土","日"],themeAuto:"自動",themeDark:"ダーク",themeLight:"ライト",loading:"読み込み中...",noResults:"投稿が見つかりませんでした",error:"エラーが発生しました" },
+  en: { search:"Search Bluesky...",searchBtn:"Search",tabs:["Feed","Results","Calendar"],radar:"Oshi Radar",prediction:"Next Post Prediction",predictionSub:"Expected in about 2 hours",mood:"This Week's Mood",moodDays:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],themeAuto:"Auto",themeDark:"Dark",themeLight:"Light",loading:"Loading...",noResults:"No posts found",error:"Something went wrong" },
 };
-const POSTS = [
-  { id:1,handle:"@yumeartist.bsky.social",name:"Yume / 夢",avatar:"YU",avatarColor:"#3b82f6",time:{ja:"2分前",en:"2m ago"},text:{ja:"新作グッズの販売を開始しました！アクリルキーホルダー＆缶バッジセット🎨 BOOTHにて受付中です",en:"New merch is now on sale! Acrylic keychain & pin badge set 🎨 Available on BOOTH now!"},likes:142,reposts:38,isAlert:true,alertText:"SALE DETECTED" },
-  { id:2,handle:"@nova.illustrator.bsky.social",name:"Nova ✦",avatar:"NO",avatarColor:"#a855f7",time:{ja:"14分前",en:"14m ago"},text:{ja:"今夜21時からツイキャスで生配信します！イラストメイキングやります〜遊びに来てね",en:"Going live tonight at 9PM on TwitCasting! Illustration speed-drawing — come hang out!"},likes:89,reposts:21,isAlert:true,alertText:"LIVE SOON" },
-  { id:3,handle:"@stellarworks.bsky.social",name:"Stellar Works",avatar:"SW",avatarColor:"#10b981",time:{ja:"1時間前",en:"1h ago"},text:{ja:"スケッチブックのページを全部埋めた。達成感がすごい。次は何を描こうかな",en:"Filled every page of my sketchbook. Such a great feeling. What should I draw next?"},likes:203,reposts:44,isAlert:false,alertText:"" },
-  { id:4,handle:"@pixel.hana.bsky.social",name:"pixel hana",avatar:"PH",avatarColor:"#f59e0b",time:{ja:"3時間前",en:"3h ago"},text:{ja:"@nova.illustrator とのコラボ企画、今週末に発表します👀 お楽しみに！",en:"Collaboration with @nova.illustrator — something big is coming this weekend 👀"},likes:317,reposts:92,isAlert:false,alertText:"" },
-];
+
 const CREATORS = [
   { name:"Yume / 夢",handle:"@yumeartist",avatar:"YU",color:"#3b82f6",activity:95 },
   { name:"Nova ✦",handle:"@nova.illus",avatar:"NO",color:"#a855f7",activity:78 },
   { name:"Stellar Works",handle:"@stellarworks",avatar:"SW",color:"#10b981",activity:42 },
   { name:"pixel hana",handle:"@pixel.hana",avatar:"PH",color:"#f59e0b",activity:61 },
 ];
+
+interface BskyPost {
+  uri: string;
+  author: { handle: string; displayName?: string; avatar?: string; };
+  record: { text: string; createdAt: string; };
+  likeCount: number;
+  repostCount: number;
+  embed?: { images?: { thumb: string; }[]; };
+}
+
+function timeAgo(dateStr: string, lang: "ja"|"en"): string {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (lang === "ja") {
+    if (diff < 60) return `${diff}秒前`;
+    if (diff < 3600) return `${Math.floor(diff/60)}分前`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}時間前`;
+    return `${Math.floor(diff/86400)}日前`;
+  } else {
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return `${Math.floor(diff/86400)}d ago`;
+  }
+}
+
+function getInitials(name: string): string {
+  return name.slice(0,2).toUpperCase();
+}
+
+const AVATAR_COLORS = ["#3b82f6","#a855f7","#10b981","#f59e0b","#ef4444","#06b6d4","#8b5cf6","#f97316"];
+function getColor(handle: string): string {
+  let hash = 0;
+  for (const c of handle) hash = (hash * 31 + c.charCodeAt(0)) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[Math.abs(hash)];
+}
+
 export default function OshiPulse() {
   const [themeMode,setThemeMode] = useState<"auto"|"dark"|"light">("auto");
   const [systemDark,setSystemDark] = useState(false);
@@ -24,7 +56,11 @@ export default function OshiPulse() {
   const [query,setQuery] = useState("");
   const [activeTab,setActiveTab] = useState(0);
   const [alertPulse,setAlertPulse] = useState(true);
-  const [likedPosts,setLikedPosts] = useState<Record<number,boolean>>({});
+  const [posts,setPosts] = useState<BskyPost[]>([]);
+  const [loading,setLoading] = useState(false);
+  const [error,setError] = useState("");
+  const [likedPosts,setLikedPosts] = useState<Record<string,boolean>>({});
+
   useEffect(() => {
     setSystemDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -35,9 +71,38 @@ export default function OshiPulse() {
     window.addEventListener("resize",checkMobile);
     return () => { mq.removeEventListener("change",handler); window.removeEventListener("resize",checkMobile); };
   },[]);
-  useEffect(() => { const t = setInterval(()=>setAlertPulse(p=>!p),1200); return ()=>clearInterval(t); },[]);
+
+  useEffect(() => { const timer = setInterval(()=>setAlertPulse(p=>!p),1200); return ()=>clearInterval(timer); },[]);
+
+  // 初期ロード
+  useEffect(() => { fetchPosts("art"); },[]);
+
+  const fetchPosts = async (q: string) => {
+    if (!q.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/bluesky?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (data.posts) {
+        setPosts(data.posts);
+        setActiveTab(1);
+      } else {
+        setError("no results");
+      }
+    } catch {
+      setError("error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = () => { if (query.trim()) fetchPosts(query); };
+  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSearch(); };
+
   const dark = themeMode==="auto"?systemDark:themeMode==="dark";
   const cycleTheme = useCallback(()=>{ setThemeMode(m=>m==="auto"?"dark":m==="dark"?"light":"auto"); },[]);
+
   const t = I18N[lang]; const d = dark;
   const bg=d?"#08090f":"#f4f3f0",surface=d?"#0f1117":"#ffffff",surfaceAlt=d?"#161820":"#f9f8f6";
   const border=d?"rgba(255,255,255,0.07)":"rgba(0,0,0,0.08)",borderStrong=d?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.14)";
@@ -45,7 +110,8 @@ export default function OshiPulse() {
   const neonDim=d?"rgba(0,229,160,0.08)":"rgba(0,180,130,0.08)",neonBorder=d?"rgba(0,229,160,0.35)":"rgba(0,160,110,0.35)",neonText=d?"#00e5a0":"#007a5e";
   const themeIcon=themeMode==="auto"?"⚙️":themeMode==="dark"?"🌙":"☀️";
   const themeLabel=themeMode==="auto"?t.themeAuto:themeMode==="dark"?t.themeDark:t.themeLight;
-  const toggleLike=(id:number)=>setLikedPosts(p=>({...p,[id]:!p[id]}));
+  const toggleLike=(uri:string)=>setLikedPosts(p=>({...p,[uri]:!p[uri]}));
+
   return (
     <div style={{minHeight:"100vh",background:bg,fontFamily:"'DM Sans',sans-serif",transition:"background 0.3s",overflowX:"hidden"}}>
       <style>{`
@@ -53,15 +119,18 @@ export default function OshiPulse() {
         *{box-sizing:border-box;margin:0;padding:0}
         @keyframes neonPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,229,160,0)}50%{box-shadow:0 0 12px 2px rgba(0,229,160,0.25)}}
         @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         .post-card{animation:slideIn 0.3s ease forwards}
-        .alert-card{animation:neonPulse 2s ease infinite}
         .like-btn{transition:transform 0.15s;background:none;border:none;cursor:pointer}
         .like-btn:hover{transform:scale(1.15)}
         .creator-row:hover{background:${d?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.03)"}}
         .ctrl-btn{transition:opacity 0.15s;cursor:pointer}
         .ctrl-btn:hover{opacity:0.7}
         .tab-btn{transition:all 0.2s;cursor:pointer;border:none}
+        .spinner{animation:spin 0.8s linear infinite;border:2px solid ${border};border-top-color:${accent};border-radius:50%;width:20px;height:20px}
       `}</style>
+
+      {/* ヘッダー */}
       <div style={{background:surface,borderBottom:`0.5px solid ${border}`,padding:"0 16px",display:"flex",alignItems:"center",justifyContent:"space-between",height:52,position:"sticky",top:0,zIndex:100}}>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:isMobile?16:18,color:accent}}>Oshi</span>
@@ -79,54 +148,104 @@ export default function OshiPulse() {
           </button>
         </div>
       </div>
+
       <div style={{maxWidth:900,margin:"0 auto",padding:"0 12px"}}>
+        {/* 検索バー */}
         <div style={{padding:"16px 0 12px"}}>
           <div style={{background:surface,border:`0.5px solid ${borderStrong}`,borderRadius:12,display:"flex",alignItems:"center",gap:8,padding:"10px 14px"}}>
             <span style={{fontSize:15,color:textMuted}}>🔍</span>
-            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.search} style={{flex:1,background:"transparent",border:"none",outline:"none",fontSize:13,color:text,fontFamily:"'DM Sans',sans-serif",minWidth:0}}/>
-            {query&&<div style={{background:accent,color:"#fff",fontSize:11,padding:"3px 12px",borderRadius:8,cursor:"pointer",fontWeight:500,whiteSpace:"nowrap"}}>{t.searchBtn}</div>}
+            <input
+              value={query}
+              onChange={e=>setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t.search}
+              style={{flex:1,background:"transparent",border:"none",outline:"none",fontSize:13,color:text,minWidth:0}}
+            />
+            <button onClick={handleSearch} style={{background:accent,color:"#fff",fontSize:11,padding:"5px 14px",borderRadius:8,cursor:"pointer",fontWeight:500,border:"none",whiteSpace:"nowrap"}}>
+              {loading ? "..." : t.searchBtn}
+            </button>
           </div>
         </div>
+
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 280px",gap:12}}>
+          {/* 左：フィード */}
           <div>
+            {/* タブ */}
             <div style={{display:"flex",gap:2,marginBottom:12,background:surfaceAlt,borderRadius:10,padding:3,border:`0.5px solid ${border}`}}>
               {t.tabs.map((label,i)=>(
-                <button key={i} className="tab-btn" onClick={()=>setActiveTab(i)} style={{flex:1,padding:"7px 0",borderRadius:8,fontSize:isMobile?11:13,fontFamily:"'DM Sans',sans-serif",fontWeight:activeTab===i?500:400,background:activeTab===i?surface:"transparent",color:activeTab===i?(i===1?neonText:text):textMuted,boxShadow:activeTab===i?`0 0 0 0.5px ${border}`:"none"}}>{label}</button>
+                <button key={i} className="tab-btn" onClick={()=>setActiveTab(i)} style={{flex:1,padding:"7px 0",borderRadius:8,fontSize:isMobile?11:13,fontWeight:activeTab===i?500:400,background:activeTab===i?surface:"transparent",color:activeTab===i?(i===1?neonText:text):textMuted,boxShadow:activeTab===i?`0 0 0 0.5px ${border}`:"none"}}>{label}</button>
               ))}
             </div>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {POSTS.map((post,i)=>(
-                <div key={post.id} className={`post-card${post.isAlert?" alert-card":""}`} style={{animationDelay:`${i*0.05}s`,background:surface,border:post.isAlert?`1px solid ${neonBorder}`:`0.5px solid ${border}`,borderRadius:14,padding:"12px 14px"}}>
-                  {post.isAlert&&<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><div style={{width:6,height:6,background:neon,borderRadius:"50%",flexShrink:0}}/><span style={{fontSize:10,color:neonText,fontFamily:"'Space Mono',monospace",letterSpacing:1}}>{post.alertText}</span></div>}
-                  <div style={{display:"flex",gap:10}}>
-                    <div style={{width:36,height:36,borderRadius:"50%",background:post.avatarColor+"22",border:`1.5px solid ${post.avatarColor}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:700,color:post.avatarColor}}>{post.avatar}</div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4,gap:8}}>
-                        <div style={{minWidth:0,flex:1}}>
-                          <span style={{fontSize:13,fontWeight:500,color:text}}>{post.name}</span>
-                          <span style={{fontSize:10,color:textMuted,marginLeft:6,display:"inline-block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?"100px":"180px",verticalAlign:"middle"}}>{post.handle}</span>
+
+            {/* ローディング */}
+            {loading && (
+              <div style={{display:"flex",justifyContent:"center",padding:"40px 0"}}>
+                <div className="spinner"/>
+              </div>
+            )}
+
+            {/* エラー */}
+            {!loading && error && (
+              <div style={{textAlign:"center",padding:"40px 0",color:textMuted,fontSize:13}}>{t.error}</div>
+            )}
+
+            {/* 投稿一覧 */}
+            {!loading && !error && (
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {posts.length === 0 ? (
+                  <div style={{textAlign:"center",padding:"40px 0",color:textMuted,fontSize:13}}>{t.noResults}</div>
+                ) : posts.map((post,i)=>{
+                  const name = post.author.displayName || post.author.handle;
+                  const color = getColor(post.author.handle);
+                  const images = post.embed?.images;
+                  return (
+                    <div key={post.uri} className="post-card" style={{animationDelay:`${i*0.03}s`,background:surface,border:`0.5px solid ${border}`,borderRadius:14,padding:"12px 14px",transition:"background 0.3s"}}>
+                      <div style={{display:"flex",gap:10}}>
+                        {post.author.avatar ? (
+                          <img src={post.author.avatar} alt={name} style={{width:36,height:36,borderRadius:"50%",flexShrink:0,objectFit:"cover"}}/>
+                        ) : (
+                          <div style={{width:36,height:36,borderRadius:"50%",background:color+"22",border:`1.5px solid ${color}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:700,color}}>{getInitials(name)}</div>
+                        )}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4,gap:8}}>
+                            <div style={{minWidth:0,flex:1}}>
+                              <span style={{fontSize:13,fontWeight:500,color:text}}>{name}</span>
+                              <span style={{fontSize:10,color:textMuted,marginLeft:6,display:"inline-block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?"100px":"180px",verticalAlign:"middle"}}>@{post.author.handle}</span>
+                            </div>
+                            <span style={{fontSize:10,color:textMuted,whiteSpace:"nowrap",flexShrink:0}}>{timeAgo(post.record.createdAt,lang)}</span>
+                          </div>
+                          <p style={{fontSize:13,color:text,lineHeight:1.6,marginBottom:images?10:10,wordBreak:"break-word"}}>{post.record.text}</p>
+                          {images && images.length > 0 && (
+                            <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+                              {images.slice(0,2).map((img,j)=>(
+                                <img key={j} src={img.thumb} alt="" style={{width:isMobile?"100%":"48%",maxHeight:160,objectFit:"cover",borderRadius:8,border:`0.5px solid ${border}`}}/>
+                              ))}
+                            </div>
+                          )}
+                          <div style={{display:"flex",gap:16}}>
+                            <button className="like-btn" onClick={()=>toggleLike(post.uri)} style={{fontSize:12,color:likedPosts[post.uri]?"#ef4444":textMuted,display:"flex",alignItems:"center",gap:4}}>
+                              <span>{likedPosts[post.uri]?"❤️":"🤍"}</span>
+                              <span>{likedPosts[post.uri]?post.likeCount+1:post.likeCount}</span>
+                            </button>
+                            <span style={{fontSize:12,color:textMuted,display:"flex",alignItems:"center",gap:4}}><span>🔁</span><span>{post.repostCount}</span></span>
+                          </div>
                         </div>
-                        <span style={{fontSize:10,color:textMuted,whiteSpace:"nowrap",flexShrink:0}}>{post.time[lang]}</span>
-                      </div>
-                      <p style={{fontSize:13,color:text,lineHeight:1.6,marginBottom:10}}>{post.text[lang]}</p>
-                      <div style={{display:"flex",gap:16}}>
-                        <button className="like-btn" onClick={()=>toggleLike(post.id)} style={{fontSize:12,color:likedPosts[post.id]?"#ef4444":textMuted,display:"flex",alignItems:"center",gap:4}}>
-                          <span>{likedPosts[post.id]?"❤️":"🤍"}</span><span>{likedPosts[post.id]?post.likes+1:post.likes}</span>
-                        </button>
-                        <span style={{fontSize:12,color:textMuted,display:"flex",alignItems:"center",gap:4}}><span>🔁</span><span>{post.reposts}</span></span>
                       </div>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
+
+          {/* 右：サイドバー */}
           <div style={{display:"flex",flexDirection:"column",gap:12,marginTop:isMobile?4:0}}>
+            {/* 推しレーダー */}
             <div style={{background:surface,border:`0.5px solid ${border}`,borderRadius:14,padding:"14px 16px"}}>
               <div style={{fontSize:11,fontWeight:500,color:textMuted,letterSpacing:0.8,marginBottom:12,textTransform:"uppercase"}}>{t.radar}</div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {CREATORS.map(c=>(
-                  <div key={c.handle} className="creator-row" style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderRadius:8,cursor:"pointer",transition:"background 0.15s"}}>
+                  <div key={c.handle} className="creator-row" onClick={()=>{setQuery(c.handle.replace("@",""));fetchPosts(c.name);}} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderRadius:8,cursor:"pointer",transition:"background 0.15s"}}>
                     <div style={{width:28,height:28,borderRadius:"50%",background:c.color+"22",border:`1.5px solid ${c.color}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:c.color,flexShrink:0}}>{c.avatar}</div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:12,fontWeight:500,color:text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.name}</div>
@@ -139,13 +258,20 @@ export default function OshiPulse() {
                 ))}
               </div>
             </div>
+
+            {/* 次の投稿予測 */}
             <div style={{background:neonDim,border:`0.5px solid ${neonBorder}`,borderRadius:14,padding:"14px 16px"}}>
               <div style={{fontSize:11,fontWeight:500,color:neonText,letterSpacing:0.8,marginBottom:10,textTransform:"uppercase",fontFamily:"'Space Mono',monospace"}}>{t.prediction}</div>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <div style={{width:28,height:28,borderRadius:"50%",background:"#3b82f622",border:"1.5px solid #3b82f655",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#3b82f6",flexShrink:0}}>YU</div>
-                <div><div style={{fontSize:12,color:text,fontWeight:500}}>Yume / 夢</div><div style={{fontSize:11,color:neonText}}>{t.predictionSub}</div></div>
+                <div>
+                  <div style={{fontSize:12,color:text,fontWeight:500}}>Yume / 夢</div>
+                  <div style={{fontSize:11,color:neonText}}>{t.predictionSub}</div>
+                </div>
               </div>
             </div>
+
+            {/* ムードグラフ */}
             <div style={{background:surface,border:`0.5px solid ${border}`,borderRadius:14,padding:"14px 16px",marginBottom:isMobile?16:0}}>
               <div style={{fontSize:11,fontWeight:500,color:textMuted,letterSpacing:0.8,marginBottom:12,textTransform:"uppercase"}}>{t.mood}</div>
               <div style={{display:"flex",alignItems:"flex-end",gap:5,height:48}}>
