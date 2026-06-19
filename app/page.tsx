@@ -100,8 +100,11 @@ export default function OshiPulse() {
 
   const handleSearch=()=>{
     if(!query.trim())return;
-    if(activeTab===2)fetchAccounts(query);
-    else fetchPosts(query);
+    if(query.startsWith("@") || activeTab===2){
+      fetchAccounts(query.replace("@",""));
+    } else {
+      fetchPosts(query);
+    }
   };
   const handleKeyDown=(e:React.KeyboardEvent)=>{if(e.key==="Enter")handleSearch();};
 
