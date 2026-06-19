@@ -30,7 +30,7 @@ function urlBase64ToUint8Array(base64String:string):Uint8Array{const padding="="
 export default function OshiPulse() {
   const [themeMode,setThemeMode]=useState<"auto"|"dark"|"light">("auto");
   const [systemDark,setSystemDark]=useState(false);
-  const [isMobile,setIsMobile]=useState(false);
+  const [isMobile,setIsMobile]=useState(true);
   const [lang,setLang]=useState<"ja"|"en">("ja");
   const [query,setQuery]=useState("");
   const [activeTab,setActiveTab]=useState(0);
@@ -259,9 +259,9 @@ export default function OshiPulse() {
 
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 280px",gap:12}}>
           <div>
-            <div style={{display:"flex",gap:4,marginBottom:12}}>
+            <div style={{display:"flex",gap:4,marginBottom:12,background:surfaceAlt,padding:4,borderRadius:10}}>
               {t.tabs.map((label,i)=>(
-                <button key={i} className="tab-btn" onClick={()=>setActiveTab(i)} style={{flex:1,padding:"8px 2px",borderRadius:8,fontSize:11,fontWeight:activeTab===i?600:400,background:activeTab===i?accent:"transparent",color:activeTab===i?"#fff":textMuted,border:`1px solid ${activeTab===i?accent:border}`}}>{label}</button>
+                <button key={i} className="tab-btn" onClick={()=>setActiveTab(i)} style={{flex:1,padding:"8px 4px",borderRadius:8,fontSize:12,fontWeight:activeTab===i?600:400,background:activeTab===i?accent:surface,color:activeTab===i?"#fff":text,border:"none"}}>{label}</button>
               ))}
             </div>
 
