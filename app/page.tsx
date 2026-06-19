@@ -111,7 +111,7 @@ export default function OshiPulse() {
       const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        applicationServerKey: urlBase64ToUint8Array(publicKey).buffer as ArrayBuffer,
       });
       setSubscription(sub);
       setNotifyStatus("subscribed");
