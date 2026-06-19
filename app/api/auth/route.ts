@@ -5,7 +5,6 @@ export async function POST(req: NextRequest) {
   try {
     const { handle, password } = await req.json();
 
-    // Blueskyで認証
     const res = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -18,7 +17,12 @@ export async function POST(req: NextRequest) {
 
     const session = await res.json();
 
-    // Supabaseにユーザーを保存
+    // プロフィールを取得してアバターを取得
+    const profileRes = await fetch(
+      `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${session.did}`
+    );
+    const profile = await profileRes.json();
+
     const { data, error } = await supabase
       .from("users")
       .upsert({
@@ -36,8 +40,8 @@ export async function POST(req: NextRequest) {
         id: data.id,
         handle: session.handle,
         did: session.did,
-        displayName: session.displayName,
-        avatar: session.avatar,
+        displayName: profile.displayName || session.handle,
+        avatar: profile.avatar || null,
         accessJwt: session.accessJwt,
       }
     });
