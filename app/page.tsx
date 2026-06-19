@@ -2,8 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 
 const I18N = {
-  ja: { search:"キーワードを検索...",searchBtn:"検索",tabs:["フィード","検索結果","カレンダー"],radar:"推しレーダー",prediction:"次の投稿予測",predictionSub:"約 2時間後に投稿の予測",mood:"今週の推しムード",moodDays:["月","火","水","木","金","土","日"],themeAuto:"自動",themeDark:"ダーク",themeLight:"ライト",loading:"読み込み中...",noResults:"投稿が見つかりませんでした",error:"エラーが発生しました" },
-  en: { search:"Search Bluesky...",searchBtn:"Search",tabs:["Feed","Results","Calendar"],radar:"Oshi Radar",prediction:"Next Post Prediction",predictionSub:"Expected in about 2 hours",mood:"This Week's Mood",moodDays:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],themeAuto:"Auto",themeDark:"Dark",themeLight:"Light",loading:"Loading...",noResults:"No posts found",error:"Something went wrong" },
+  ja: { search:"キーワードを検索...",searchBtn:"検索",tabs:["フィード","検索結果","カレンダー"],radar:"推しレーダー",prediction:"次の投稿予測",predictionSub:"約 2時間後に投稿の予測",mood:"今週の推しムード",moodDays:["月","火","水","木","金","土","日"],themeAuto:"自動",themeDark:"ダーク",themeLight:"ライト",loading:"読み込み中...",noResults:"投稿が見つかりませんでした",error:"エラーが発生しました",notifyOn:"🔔 通知をオンにする",notifyOff:"🔕 通知をオフにする",notifyDone:"✅ 通知が届きます！",testNotify:"テスト通知を送る" },
+  en: { search:"Search Bluesky...",searchBtn:"Search",tabs:["Feed","Results","Calendar"],radar:"Oshi Radar",prediction:"Next Post Prediction",predictionSub:"Expected in about 2 hours",mood:"This Week's Mood",moodDays:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],themeAuto:"Auto",themeDark:"Dark",themeLight:"Light",loading:"Loading...",noResults:"No posts found",error:"Something went wrong",notifyOn:"🔔 Enable Notifications",notifyOff:"🔕 Disable Notifications",notifyDone:"✅ Notifications enabled!",testNotify:"Send test notification" },
 };
 
 const CREATORS = [
@@ -37,15 +37,19 @@ function timeAgo(dateStr: string, lang: "ja"|"en"): string {
   }
 }
 
-function getInitials(name: string): string {
-  return name.slice(0,2).toUpperCase();
-}
-
+function getInitials(name: string): string { return name.slice(0,2).toUpperCase(); }
 const AVATAR_COLORS = ["#3b82f6","#a855f7","#10b981","#f59e0b","#ef4444","#06b6d4","#8b5cf6","#f97316"];
 function getColor(handle: string): string {
   let hash = 0;
   for (const c of handle) hash = (hash * 31 + c.charCodeAt(0)) % AVATAR_COLORS.length;
   return AVATAR_COLORS[Math.abs(hash)];
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  return new Uint8Array([...rawData].map(c => c.charCodeAt(0)));
 }
 
 export default function OshiPulse() {
@@ -60,6 +64,8 @@ export default function OshiPulse() {
   const [loading,setLoading] = useState(false);
   const [error,setError] = useState("");
   const [likedPosts,setLikedPosts] = useState<Record<string,boolean>>({});
+  const [subscription,setSubscription] = useState<PushSubscription|null>(null);
+  const [notifyStatus,setNotifyStatus] = useState<"idle"|"subscribed"|"denied">("idle");
 
   useEffect(() => {
     setSystemDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -69,37 +75,75 @@ export default function OshiPulse() {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener("resize",checkMobile);
+
+    // Service Worker登録
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").then(reg => {
+        console.log("SW registered:", reg);
+        reg.pushManager.getSubscription().then(sub => {
+          if (sub) { setSubscription(sub); setNotifyStatus("subscribed"); }
+        });
+      });
+    }
+
     return () => { mq.removeEventListener("change",handler); window.removeEventListener("resize",checkMobile); };
   },[]);
 
   useEffect(() => { const timer = setInterval(()=>setAlertPulse(p=>!p),1200); return ()=>clearInterval(timer); },[]);
-
-  // 初期ロード
   useEffect(() => { fetchPosts("art"); },[]);
 
   const fetchPosts = async (q: string) => {
     if (!q.trim()) return;
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
       const res = await fetch(`/api/bluesky?q=${encodeURIComponent(q)}`);
       const data = await res.json();
-      if (data.posts) {
-        setPosts(data.posts);
-        setActiveTab(1);
-      } else {
-        setError("no results");
-      }
+      if (data.posts) { setPosts(data.posts); setActiveTab(1); }
+      else setError("no results");
+    } catch { setError("error"); }
+    finally { setLoading(false); }
+  };
+
+  const handleSubscribe = async () => {
+    if (!("serviceWorker" in navigator)) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+      setSubscription(sub);
+      setNotifyStatus("subscribed");
     } catch {
-      setError("error");
-    } finally {
-      setLoading(false);
+      setNotifyStatus("denied");
     }
+  };
+
+  const handleUnsubscribe = async () => {
+    if (subscription) {
+      await subscription.unsubscribe();
+      setSubscription(null);
+      setNotifyStatus("idle");
+    }
+  };
+
+  const sendTestNotification = async () => {
+    if (!subscription) return;
+    await fetch("/api/push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subscription,
+        title: "OshiPulse 🎉",
+        body: lang === "ja" ? "推しの新着投稿があります！" : "Your oshi just posted!",
+        url: "/",
+      }),
+    });
   };
 
   const handleSearch = () => { if (query.trim()) fetchPosts(query); };
   const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSearch(); };
-
   const dark = themeMode==="auto"?systemDark:themeMode==="dark";
   const cycleTheme = useCallback(()=>{ setThemeMode(m=>m==="auto"?"dark":m==="dark"?"light":"auto"); },[]);
 
@@ -150,60 +194,60 @@ export default function OshiPulse() {
       </div>
 
       <div style={{maxWidth:900,margin:"0 auto",padding:"0 12px"}}>
+
+        {/* 通知バナー */}
+        {notifyStatus !== "subscribed" && (
+          <div style={{margin:"12px 0",background:neonDim,border:`0.5px solid ${neonBorder}`,borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+            <span style={{fontSize:12,color:neonText}}>推しの新着投稿をリアルタイムで受け取ろう</span>
+            <button onClick={handleSubscribe} style={{background:neon,color:"#000",fontSize:11,fontWeight:700,padding:"6px 14px",borderRadius:20,border:"none",cursor:"pointer",whiteSpace:"nowrap"}}>{t.notifyOn}</button>
+          </div>
+        )}
+
+        {/* 通知ON済みバナー */}
+        {notifyStatus === "subscribed" && (
+          <div style={{margin:"12px 0",background:surface,border:`0.5px solid ${neonBorder}`,borderRadius:12,padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+            <span style={{fontSize:12,color:neonText}}>{t.notifyDone}</span>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={sendTestNotification} style={{background:accent,color:"#fff",fontSize:11,fontWeight:500,padding:"5px 12px",borderRadius:20,border:"none",cursor:"pointer",whiteSpace:"nowrap"}}>{t.testNotify}</button>
+              <button onClick={handleUnsubscribe} style={{background:surfaceAlt,color:textMuted,fontSize:11,padding:"5px 12px",borderRadius:20,border:`0.5px solid ${border}`,cursor:"pointer",whiteSpace:"nowrap"}}>{t.notifyOff}</button>
+            </div>
+          </div>
+        )}
+
         {/* 検索バー */}
-        <div style={{padding:"16px 0 12px"}}>
+        <div style={{padding:"8px 0 12px"}}>
           <div style={{background:surface,border:`0.5px solid ${borderStrong}`,borderRadius:12,display:"flex",alignItems:"center",gap:8,padding:"10px 14px"}}>
             <span style={{fontSize:15,color:textMuted}}>🔍</span>
-            <input
-              value={query}
-              onChange={e=>setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t.search}
-              style={{flex:1,background:"transparent",border:"none",outline:"none",fontSize:13,color:text,minWidth:0}}
-            />
-            <button onClick={handleSearch} style={{background:accent,color:"#fff",fontSize:11,padding:"5px 14px",borderRadius:8,cursor:"pointer",fontWeight:500,border:"none",whiteSpace:"nowrap"}}>
-              {loading ? "..." : t.searchBtn}
-            </button>
+            <input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={handleKeyDown} placeholder={t.search} style={{flex:1,background:"transparent",border:"none",outline:"none",fontSize:13,color:text,minWidth:0}}/>
+            <button onClick={handleSearch} style={{background:accent,color:"#fff",fontSize:11,padding:"5px 14px",borderRadius:8,cursor:"pointer",fontWeight:500,border:"none",whiteSpace:"nowrap"}}>{loading?"...":t.searchBtn}</button>
           </div>
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 280px",gap:12}}>
-          {/* 左：フィード */}
           <div>
-            {/* タブ */}
             <div style={{display:"flex",gap:2,marginBottom:12,background:surfaceAlt,borderRadius:10,padding:3,border:`0.5px solid ${border}`}}>
               {t.tabs.map((label,i)=>(
                 <button key={i} className="tab-btn" onClick={()=>setActiveTab(i)} style={{flex:1,padding:"7px 0",borderRadius:8,fontSize:isMobile?11:13,fontWeight:activeTab===i?500:400,background:activeTab===i?surface:"transparent",color:activeTab===i?(i===1?neonText:text):textMuted,boxShadow:activeTab===i?`0 0 0 0.5px ${border}`:"none"}}>{label}</button>
               ))}
             </div>
 
-            {/* ローディング */}
-            {loading && (
-              <div style={{display:"flex",justifyContent:"center",padding:"40px 0"}}>
-                <div className="spinner"/>
-              </div>
-            )}
+            {loading&&<div style={{display:"flex",justifyContent:"center",padding:"40px 0"}}><div className="spinner"/></div>}
+            {!loading&&error&&<div style={{textAlign:"center",padding:"40px 0",color:textMuted,fontSize:13}}>{t.error}</div>}
 
-            {/* エラー */}
-            {!loading && error && (
-              <div style={{textAlign:"center",padding:"40px 0",color:textMuted,fontSize:13}}>{t.error}</div>
-            )}
-
-            {/* 投稿一覧 */}
-            {!loading && !error && (
+            {!loading&&!error&&(
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {posts.length === 0 ? (
+                {posts.length===0?(
                   <div style={{textAlign:"center",padding:"40px 0",color:textMuted,fontSize:13}}>{t.noResults}</div>
-                ) : posts.map((post,i)=>{
-                  const name = post.author.displayName || post.author.handle;
-                  const color = getColor(post.author.handle);
-                  const images = post.embed?.images;
+                ):posts.map((post,i)=>{
+                  const name=post.author.displayName||post.author.handle;
+                  const color=getColor(post.author.handle);
+                  const images=post.embed?.images;
                   return (
-                    <div key={post.uri} className="post-card" style={{animationDelay:`${i*0.03}s`,background:surface,border:`0.5px solid ${border}`,borderRadius:14,padding:"12px 14px",transition:"background 0.3s"}}>
+                    <div key={post.uri} className="post-card" style={{animationDelay:`${i*0.03}s`,background:surface,border:`0.5px solid ${border}`,borderRadius:14,padding:"12px 14px"}}>
                       <div style={{display:"flex",gap:10}}>
-                        {post.author.avatar ? (
+                        {post.author.avatar?(
                           <img src={post.author.avatar} alt={name} style={{width:36,height:36,borderRadius:"50%",flexShrink:0,objectFit:"cover"}}/>
-                        ) : (
+                        ):(
                           <div style={{width:36,height:36,borderRadius:"50%",background:color+"22",border:`1.5px solid ${color}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:700,color}}>{getInitials(name)}</div>
                         )}
                         <div style={{flex:1,minWidth:0}}>
@@ -214,8 +258,8 @@ export default function OshiPulse() {
                             </div>
                             <span style={{fontSize:10,color:textMuted,whiteSpace:"nowrap",flexShrink:0}}>{timeAgo(post.record.createdAt,lang)}</span>
                           </div>
-                          <p style={{fontSize:13,color:text,lineHeight:1.6,marginBottom:images?10:10,wordBreak:"break-word"}}>{post.record.text}</p>
-                          {images && images.length > 0 && (
+                          <p style={{fontSize:13,color:text,lineHeight:1.6,marginBottom:10,wordBreak:"break-word"}}>{post.record.text}</p>
+                          {images&&images.length>0&&(
                             <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
                               {images.slice(0,2).map((img,j)=>(
                                 <img key={j} src={img.thumb} alt="" style={{width:isMobile?"100%":"48%",maxHeight:160,objectFit:"cover",borderRadius:8,border:`0.5px solid ${border}`}}/>
@@ -224,8 +268,7 @@ export default function OshiPulse() {
                           )}
                           <div style={{display:"flex",gap:16}}>
                             <button className="like-btn" onClick={()=>toggleLike(post.uri)} style={{fontSize:12,color:likedPosts[post.uri]?"#ef4444":textMuted,display:"flex",alignItems:"center",gap:4}}>
-                              <span>{likedPosts[post.uri]?"❤️":"🤍"}</span>
-                              <span>{likedPosts[post.uri]?post.likeCount+1:post.likeCount}</span>
+                              <span>{likedPosts[post.uri]?"❤️":"🤍"}</span><span>{likedPosts[post.uri]?post.likeCount+1:post.likeCount}</span>
                             </button>
                             <span style={{fontSize:12,color:textMuted,display:"flex",alignItems:"center",gap:4}}><span>🔁</span><span>{post.repostCount}</span></span>
                           </div>
@@ -238,14 +281,12 @@ export default function OshiPulse() {
             )}
           </div>
 
-          {/* 右：サイドバー */}
           <div style={{display:"flex",flexDirection:"column",gap:12,marginTop:isMobile?4:0}}>
-            {/* 推しレーダー */}
             <div style={{background:surface,border:`0.5px solid ${border}`,borderRadius:14,padding:"14px 16px"}}>
               <div style={{fontSize:11,fontWeight:500,color:textMuted,letterSpacing:0.8,marginBottom:12,textTransform:"uppercase"}}>{t.radar}</div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {CREATORS.map(c=>(
-                  <div key={c.handle} className="creator-row" onClick={()=>{setQuery(c.handle.replace("@",""));fetchPosts(c.name);}} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderRadius:8,cursor:"pointer",transition:"background 0.15s"}}>
+                  <div key={c.handle} className="creator-row" onClick={()=>{setQuery(c.name);fetchPosts(c.name);}} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderRadius:8,cursor:"pointer",transition:"background 0.15s"}}>
                     <div style={{width:28,height:28,borderRadius:"50%",background:c.color+"22",border:`1.5px solid ${c.color}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:c.color,flexShrink:0}}>{c.avatar}</div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:12,fontWeight:500,color:text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.name}</div>
@@ -259,25 +300,18 @@ export default function OshiPulse() {
               </div>
             </div>
 
-            {/* 次の投稿予測 */}
             <div style={{background:neonDim,border:`0.5px solid ${neonBorder}`,borderRadius:14,padding:"14px 16px"}}>
               <div style={{fontSize:11,fontWeight:500,color:neonText,letterSpacing:0.8,marginBottom:10,textTransform:"uppercase",fontFamily:"'Space Mono',monospace"}}>{t.prediction}</div>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <div style={{width:28,height:28,borderRadius:"50%",background:"#3b82f622",border:"1.5px solid #3b82f655",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#3b82f6",flexShrink:0}}>YU</div>
-                <div>
-                  <div style={{fontSize:12,color:text,fontWeight:500}}>Yume / 夢</div>
-                  <div style={{fontSize:11,color:neonText}}>{t.predictionSub}</div>
-                </div>
+                <div><div style={{fontSize:12,color:text,fontWeight:500}}>Yume / 夢</div><div style={{fontSize:11,color:neonText}}>{t.predictionSub}</div></div>
               </div>
             </div>
 
-            {/* ムードグラフ */}
             <div style={{background:surface,border:`0.5px solid ${border}`,borderRadius:14,padding:"14px 16px",marginBottom:isMobile?16:0}}>
               <div style={{fontSize:11,fontWeight:500,color:textMuted,letterSpacing:0.8,marginBottom:12,textTransform:"uppercase"}}>{t.mood}</div>
               <div style={{display:"flex",alignItems:"flex-end",gap:5,height:48}}>
-                {[40,55,70,60,85,90,75].map((h,i)=>(
-                  <div key={i} style={{flex:1,height:`${h}%`,background:h>80?neon:(d?"#1e3a5f":"#dbeafe"),borderRadius:3}}/>
-                ))}
+                {[40,55,70,60,85,90,75].map((h,i)=>(<div key={i} style={{flex:1,height:`${h}%`,background:h>80?neon:(d?"#1e3a5f":"#dbeafe"),borderRadius:3}}/>))}
               </div>
               <div style={{display:"flex",marginTop:6}}>
                 {t.moodDays.map(day=>(<span key={day} style={{fontSize:10,color:textMuted,flex:1,textAlign:"center"}}>{day}</span>))}
