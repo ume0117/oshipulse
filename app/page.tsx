@@ -2,8 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 
 const I18N = {
-  ja: { search:"キーワードを検索...",searchBtn:"検索",tabs:["フィード","投稿検索","アカウント検索"],radar:"推しレーダー",prediction:"次の投稿予測",predictionSub:"約 2時間後に投稿の予測",mood:"今週の推しムード",moodDays:["月","火","水","木","金","土","日"],themeAuto:"自動",themeDark:"ダーク",themeLight:"ライト",loading:"読み込み中...",noResults:"見つかりませんでした",error:"エラーが発生しました",notifyOn:"🔔 通知をオンにする",notifyOff:"🔕 通知をオフにする",notifyDone:"✅ 通知が届きます！",testNotify:"テスト通知",login:"ログイン",logout:"ログアウト",loginTitle:"Blueskyでログイン",handlePlaceholder:"ハンドル（例：you.bsky.social）",passwordPlaceholder:"アプリパスワード",loginBtn:"ログイン",loginNote:"※ アプリパスワードを使用してください",loginError:"ログインに失敗しました",addOshi:"追加",oshiPlaceholder:"推しのハンドル",myOshi:"マイ推しリスト",searchAccount:"アカウントを検索",follow:"推しに追加" },
-  en: { search:"Search Bluesky...",searchBtn:"Search",tabs:["Feed","Posts","Accounts"],radar:"Oshi Radar",prediction:"Next Post Prediction",predictionSub:"Expected in about 2 hours",mood:"This Week's Mood",moodDays:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],themeAuto:"Auto",themeDark:"Dark",themeLight:"Light",loading:"Loading...",noResults:"No results found",error:"Something went wrong",notifyOn:"🔔 Enable Notifications",notifyOff:"🔕 Disable",notifyDone:"✅ Notifications on!",testNotify:"Test",login:"Login",logout:"Logout",loginTitle:"Login with Bluesky",handlePlaceholder:"Handle (e.g. you.bsky.social)",passwordPlaceholder:"App Password",loginBtn:"Login",loginNote:"※ Please use an App Password",loginError:"Login failed",addOshi:"Add",oshiPlaceholder:"Oshi handle",myOshi:"My Oshi List",searchAccount:"Search Accounts",follow:"Add Oshi" },
+  ja: { search:"キーワードを検索...",searchBtn:"検索",tabs:["フィード","投稿","アカウント"],radar:"推しレーダー",prediction:"次の投稿予測",predictionSub:"約 2時間後に投稿の予測",mood:"今週の推しムード",moodDays:["月","火","水","木","金","土","日"],themeAuto:"自動",themeDark:"ダーク",themeLight:"ライト",loading:"読み込み中...",noResults:"見つかりませんでした",error:"エラーが発生しました",notifyOn:"🔔 通知をオンにする",notifyOff:"🔕 通知をオフにする",notifyDone:"✅ 通知が届きます！",testNotify:"テスト通知",login:"ログイン",logout:"ログアウト",loginTitle:"Blueskyでログイン",handlePlaceholder:"ハンドル（例：you.bsky.social）",passwordPlaceholder:"アプリパスワード",loginBtn:"ログイン",loginNote:"※ アプリパスワードを使用してください",loginError:"ログインに失敗しました",addOshi:"追加",oshiPlaceholder:"推しのハンドル",myOshi:"マイ推しリスト",searchAccount:"アカウントを検索",follow:"推しに追加" },
+  en: { search:"Search Bluesky...",searchBtn:"Search",tabs:["Feed","Posts","Users"],radar:"Oshi Radar",prediction:"Next Post Prediction",predictionSub:"Expected in about 2 hours",mood:"This Week's Mood",moodDays:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],themeAuto:"Auto",themeDark:"Dark",themeLight:"Light",loading:"Loading...",noResults:"No results found",error:"Something went wrong",notifyOn:"🔔 Enable Notifications",notifyOff:"🔕 Disable",notifyDone:"✅ Notifications on!",testNotify:"Test",login:"Login",logout:"Logout",loginTitle:"Login with Bluesky",handlePlaceholder:"Handle (e.g. you.bsky.social)",passwordPlaceholder:"App Password",loginBtn:"Login",loginNote:"※ Please use an App Password",loginError:"Login failed",addOshi:"Add",oshiPlaceholder:"Oshi handle",myOshi:"My Oshi List",searchAccount:"Search Accounts",follow:"Add Oshi" },
 };
 
 const CREATORS = [
@@ -275,21 +275,23 @@ export default function OshiPulse() {
                   const color=getColor(account.handle);
                   const isAdded=oshiList.includes(account.handle);
                   return (
-                    <div key={account.did} className="account-card" style={{background:surface,border:`0.5px solid ${border}`,borderRadius:14,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,transition:"background 0.15s"}}>
-                      {account.avatar?(<img src={account.avatar} alt={name} style={{width:44,height:44,borderRadius:"50%",flexShrink:0,objectFit:"cover"}}/>):(
-                        <div style={{width:44,height:44,borderRadius:"50%",background:color+"22",border:`1.5px solid ${color}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14,fontWeight:700,color}}>{getInitials(name)}</div>
-                      )}
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:14,fontWeight:500,color:text}}>{name}</div>
-                        <div style={{fontSize:11,color:textMuted}}>@{account.handle}</div>
-                        {account.description&&<div style={{fontSize:12,color:textMuted,marginTop:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{account.description}</div>}
+                    <div key={account.did} className="account-card" onClick={()=>fetchPosts(account.handle)} style={{background:surface,border:`0.5px solid ${border}`,borderRadius:14,padding:"12px 14px",cursor:"pointer",transition:"background 0.15s"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                        {account.avatar?(<img src={account.avatar} alt={name} style={{width:40,height:40,borderRadius:"50%",flexShrink:0,objectFit:"cover"}}/>):(
+                          <div style={{width:40,height:40,borderRadius:"50%",background:color+"22",border:`1.5px solid ${color}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13,fontWeight:700,color}}>{getInitials(name)}</div>
+                        )}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:500,color:text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</div>
+                          <div style={{fontSize:11,color:textMuted}}>@{account.handle}</div>
+                        </div>
                       </div>
-                      <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
-                        <button onClick={()=>fetchPosts(account.handle)} style={{background:surfaceAlt,color:text,border:`0.5px solid ${border}`,borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}}>投稿を見る</button>
+                      {account.description&&<div style={{fontSize:12,color:textMuted,marginBottom:8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{account.description}</div>}
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={e=>{e.stopPropagation();fetchPosts(account.handle);}} style={{flex:1,background:surfaceAlt,color:text,border:`0.5px solid ${border}`,borderRadius:8,padding:"6px 0",fontSize:11,cursor:"pointer",textAlign:"center" as const}}>投稿を見る</button>
                         {user&&(
-                          <button onClick={()=>isAdded?removeOshi(account.handle):addOshi(account.handle)}
-                            style={{background:isAdded?surfaceAlt:neon,color:isAdded?textMuted:"#000",border:`0.5px solid ${isAdded?border:neonBorder}`,borderRadius:8,padding:"5px 10px",fontSize:11,fontWeight:isAdded?400:600,cursor:"pointer",whiteSpace:"nowrap"}}>
-                            {isAdded?"追加済み":t.follow}
+                          <button onClick={e=>{e.stopPropagation();isAdded?removeOshi(account.handle):addOshi(account.handle);}}
+                            style={{flex:1,background:isAdded?surfaceAlt:neon,color:isAdded?textMuted:"#000",border:`0.5px solid ${isAdded?border:neonBorder}`,borderRadius:8,padding:"6px 0",fontSize:11,fontWeight:isAdded?400:600,cursor:"pointer",textAlign:"center" as const}}>
+                            {isAdded?"✅ 追加済み":t.follow}
                           </button>
                         )}
                       </div>
