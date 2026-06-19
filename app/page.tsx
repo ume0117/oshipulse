@@ -2,8 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 
 const I18N = {
-  ja: { search:"キーワードを検索...",searchBtn:"検索",tabs:["フィード","検索結果","カレンダー"],radar:"推しレーダー",prediction:"次の投稿予測",predictionSub:"約 2時間後に投稿の予測",mood:"今週の推しムード",moodDays:["月","火","水","木","金","土","日"],themeAuto:"自動",themeDark:"ダーク",themeLight:"ライト",loading:"読み込み中...",noResults:"投稿が見つかりませんでした",error:"エラーが発生しました",notifyOn:"🔔 通知をオンにする",notifyOff:"🔕 通知をオフにする",notifyDone:"✅ 通知が届きます！",testNotify:"テスト通知を送る" },
-  en: { search:"Search Bluesky...",searchBtn:"Search",tabs:["Feed","Results","Calendar"],radar:"Oshi Radar",prediction:"Next Post Prediction",predictionSub:"Expected in about 2 hours",mood:"This Week's Mood",moodDays:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],themeAuto:"Auto",themeDark:"Dark",themeLight:"Light",loading:"Loading...",noResults:"No posts found",error:"Something went wrong",notifyOn:"🔔 Enable Notifications",notifyOff:"🔕 Disable Notifications",notifyDone:"✅ Notifications enabled!",testNotify:"Send test notification" },
+  ja: { search:"キーワードを検索...",searchBtn:"検索",tabs:["フィード","検索結果","カレンダー"],radar:"推しレーダー",prediction:"次の投稿予測",predictionSub:"約 2時間後に投稿の予測",mood:"今週の推しムード",moodDays:["月","火","水","木","金","土","日"],themeAuto:"自動",themeDark:"ダーク",themeLight:"ライト",loading:"読み込み中...",noResults:"投稿が見つかりませんでした",error:"エラーが発生しました",notifyOn:"🔔 通知をオンにする",notifyOff:"🔕 通知をオフにする",notifyDone:"✅ 通知が届きます！",testNotify:"テスト通知",login:"ログイン",logout:"ログアウト",loginTitle:"Blueskyでログイン",handlePlaceholder:"ハンドル（例：you.bsky.social）",passwordPlaceholder:"アプリパスワード",loginBtn:"ログイン",loginNote:"※ アプリパスワードを使用してください",loginError:"ログインに失敗しました",addOshi:"推しを追加",oshiPlaceholder:"推しのハンドル（例：creator.bsky.social）",addBtn:"追加",myOshi:"マイ推しリスト" },
+  en: { search:"Search Bluesky...",searchBtn:"Search",tabs:["Feed","Results","Calendar"],radar:"Oshi Radar",prediction:"Next Post Prediction",predictionSub:"Expected in about 2 hours",mood:"This Week's Mood",moodDays:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],themeAuto:"Auto",themeDark:"Dark",themeLight:"Light",loading:"Loading...",noResults:"No posts found",error:"Something went wrong",notifyOn:"🔔 Enable Notifications",notifyOff:"🔕 Disable",notifyDone:"✅ Notifications on!",testNotify:"Test notify",login:"Login",logout:"Logout",loginTitle:"Login with Bluesky",handlePlaceholder:"Handle (e.g. you.bsky.social)",passwordPlaceholder:"App Password",loginBtn:"Login",loginNote:"※ Please use an App Password",loginError:"Login failed",addOshi:"Add Oshi",oshiPlaceholder:"Oshi handle (e.g. creator.bsky.social)",addBtn:"Add",myOshi:"My Oshi List" },
 };
 
 const CREATORS = [
@@ -20,6 +20,15 @@ interface BskyPost {
   likeCount: number;
   repostCount: number;
   embed?: { images?: { thumb: string; }[]; };
+}
+
+interface User {
+  id: string;
+  handle: string;
+  did: string;
+  displayName?: string;
+  avatar?: string;
+  accessJwt: string;
 }
 
 function timeAgo(dateStr: string, lang: "ja"|"en"): string {
@@ -66,6 +75,14 @@ export default function OshiPulse() {
   const [likedPosts,setLikedPosts] = useState<Record<string,boolean>>({});
   const [subscription,setSubscription] = useState<PushSubscription|null>(null);
   const [notifyStatus,setNotifyStatus] = useState<"idle"|"subscribed"|"denied">("idle");
+  const [user,setUser] = useState<User|null>(null);
+  const [showLogin,setShowLogin] = useState(false);
+  const [loginHandle,setLoginHandle] = useState("");
+  const [loginPassword,setLoginPassword] = useState("");
+  const [loginLoading,setLoginLoading] = useState(false);
+  const [loginError,setLoginError] = useState("");
+  const [oshiHandle,setOshiHandle] = useState("");
+  const [oshiList,setOshiList] = useState<string[]>([]);
 
   useEffect(() => {
     setSystemDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -75,17 +92,17 @@ export default function OshiPulse() {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener("resize",checkMobile);
-
-    // Service Worker登録
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").then(reg => {
-        console.log("SW registered:", reg);
         reg.pushManager.getSubscription().then(sub => {
           if (sub) { setSubscription(sub); setNotifyStatus("subscribed"); }
         });
       });
     }
-
+    const savedUser = localStorage.getItem("oshipulse_user");
+    if (savedUser) setUser(JSON.parse(savedUser));
+    const savedOshi = localStorage.getItem("oshipulse_oshi");
+    if (savedOshi) setOshiList(JSON.parse(savedOshi));
     return () => { mq.removeEventListener("change",handler); window.removeEventListener("resize",checkMobile); };
   },[]);
 
@@ -104,6 +121,49 @@ export default function OshiPulse() {
     finally { setLoading(false); }
   };
 
+  const handleLogin = async () => {
+    setLoginLoading(true); setLoginError("");
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handle: loginHandle, password: loginPassword }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setUser(data.user);
+        localStorage.setItem("oshipulse_user", JSON.stringify(data.user));
+        setShowLogin(false);
+        setLoginHandle(""); setLoginPassword("");
+      } else {
+        setLoginError(t.loginError);
+      }
+    } catch { setLoginError(t.loginError); }
+    finally { setLoginLoading(false); }
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem("oshipulse_user");
+  };
+
+  const addOshi = () => {
+    if (!oshiHandle.trim()) return;
+    const handle = oshiHandle.replace("@","").trim();
+    if (oshiList.includes(handle)) return;
+    const newList = [...oshiList, handle];
+    setOshiList(newList);
+    localStorage.setItem("oshipulse_oshi", JSON.stringify(newList));
+    setOshiHandle("");
+    fetchPosts(handle);
+  };
+
+  const removeOshi = (handle: string) => {
+    const newList = oshiList.filter(h => h !== handle);
+    setOshiList(newList);
+    localStorage.setItem("oshipulse_oshi", JSON.stringify(newList));
+  };
+
   const handleSubscribe = async () => {
     if (!("serviceWorker" in navigator)) return;
     try {
@@ -113,19 +173,12 @@ export default function OshiPulse() {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey).buffer as ArrayBuffer,
       });
-      setSubscription(sub);
-      setNotifyStatus("subscribed");
-    } catch {
-      setNotifyStatus("denied");
-    }
+      setSubscription(sub); setNotifyStatus("subscribed");
+    } catch { setNotifyStatus("denied"); }
   };
 
   const handleUnsubscribe = async () => {
-    if (subscription) {
-      await subscription.unsubscribe();
-      setSubscription(null);
-      setNotifyStatus("idle");
-    }
+    if (subscription) { await subscription.unsubscribe(); setSubscription(null); setNotifyStatus("idle"); }
   };
 
   const sendTestNotification = async () => {
@@ -133,17 +186,12 @@ export default function OshiPulse() {
     await fetch("/api/push", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subscription,
-        title: "OshiPulse 🎉",
-        body: lang === "ja" ? "推しの新着投稿があります！" : "Your oshi just posted!",
-        url: "/",
-      }),
+      body: JSON.stringify({ subscription, title:"OshiPulse 🎉", body: lang==="ja"?"推しの新着投稿があります！":"Your oshi just posted!", url:"/" }),
     });
   };
 
   const handleSearch = () => { if (query.trim()) fetchPosts(query); };
-  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSearch(); };
+  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key==="Enter") handleSearch(); };
   const dark = themeMode==="auto"?systemDark:themeMode==="dark";
   const cycleTheme = useCallback(()=>{ setThemeMode(m=>m==="auto"?"dark":m==="dark"?"light":"auto"); },[]);
 
@@ -164,6 +212,7 @@ export default function OshiPulse() {
         @keyframes neonPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,229,160,0)}50%{box-shadow:0 0 12px 2px rgba(0,229,160,0.25)}}
         @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
         .post-card{animation:slideIn 0.3s ease forwards}
         .like-btn{transition:transform 0.15s;background:none;border:none;cursor:pointer}
         .like-btn:hover{transform:scale(1.15)}
@@ -172,7 +221,38 @@ export default function OshiPulse() {
         .ctrl-btn:hover{opacity:0.7}
         .tab-btn{transition:all 0.2s;cursor:pointer;border:none}
         .spinner{animation:spin 0.8s linear infinite;border:2px solid ${border};border-top-color:${accent};border-radius:50%;width:20px;height:20px}
+        .modal-overlay{animation:fadeIn 0.2s ease}
+        input:focus{outline:none}
       `}</style>
+
+      {/* ログインモーダル */}
+      {showLogin && (
+        <div className="modal-overlay" onClick={()=>setShowLogin(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:surface,borderRadius:20,padding:28,width:"100%",maxWidth:380,border:`0.5px solid ${borderStrong}`}}>
+            <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:20,color:text,marginBottom:6}}>
+              <span style={{color:accent}}>Oshi</span>Pulse
+            </div>
+            <div style={{fontSize:13,color:textMuted,marginBottom:24}}>{t.loginTitle}</div>
+            <input value={loginHandle} onChange={e=>setLoginHandle(e.target.value)} placeholder={t.handlePlaceholder}
+              style={{width:"100%",background:surfaceAlt,border:`0.5px solid ${border}`,borderRadius:10,padding:"10px 14px",fontSize:13,color:text,marginBottom:10}}/>
+            <input type="password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder={t.passwordPlaceholder}
+              onKeyDown={e=>{if(e.key==="Enter")handleLogin();}}
+              style={{width:"100%",background:surfaceAlt,border:`0.5px solid ${border}`,borderRadius:10,padding:"10px 14px",fontSize:13,color:text,marginBottom:6}}/>
+            <div style={{fontSize:10,color:textMuted,marginBottom:16}}>{t.loginNote}</div>
+            {loginError && <div style={{fontSize:12,color:"#ef4444",marginBottom:12}}>{loginError}</div>}
+            <button onClick={handleLogin} disabled={loginLoading}
+              style={{width:"100%",background:accent,color:"#fff",border:"none",borderRadius:10,padding:"12px",fontSize:14,fontWeight:600,cursor:"pointer"}}>
+              {loginLoading?"...":t.loginBtn}
+            </button>
+            <div style={{textAlign:"center",marginTop:12}}>
+              <a href="https://bsky.app/settings/app-passwords" target="_blank" rel="noopener noreferrer"
+                style={{fontSize:11,color:accent,textDecoration:"none"}}>
+                アプリパスワードの取得方法 →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ヘッダー */}
       <div style={{background:surface,borderBottom:`0.5px solid ${border}`,padding:"0 16px",display:"flex",alignItems:"center",justifyContent:"space-between",height:52,position:"sticky",top:0,zIndex:100}}>
@@ -190,31 +270,39 @@ export default function OshiPulse() {
           <button className="ctrl-btn" onClick={cycleTheme} style={{background:surfaceAlt,border:`0.5px solid ${border}`,borderRadius:20,padding:"3px 10px",fontSize:11,color:textMuted,display:"flex",alignItems:"center",gap:4}}>
             <span>{themeIcon}</span>{!isMobile&&<span>{themeLabel}</span>}
           </button>
+          {user ? (
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              {user.avatar ? (
+                <img src={user.avatar} alt={user.handle} style={{width:28,height:28,borderRadius:"50%",objectFit:"cover"}}/>
+              ) : (
+                <div style={{width:28,height:28,borderRadius:"50%",background:accent+"22",border:`1.5px solid ${accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:accent}}>{getInitials(user.handle)}</div>
+              )}
+              {!isMobile && <span style={{fontSize:11,color:textMuted}}>@{user.handle}</span>}
+              <button className="ctrl-btn" onClick={handleLogout} style={{background:surfaceAlt,border:`0.5px solid ${border}`,borderRadius:20,padding:"3px 10px",fontSize:11,color:textMuted}}>{t.logout}</button>
+            </div>
+          ) : (
+            <button className="ctrl-btn" onClick={()=>setShowLogin(true)} style={{background:accent,color:"#fff",border:"none",borderRadius:20,padding:"4px 12px",fontSize:11,fontWeight:500}}>{t.login}</button>
+          )}
         </div>
       </div>
 
       <div style={{maxWidth:900,margin:"0 auto",padding:"0 12px"}}>
-
-        {/* 通知バナー */}
-        {notifyStatus !== "subscribed" && (
+        {notifyStatus!=="subscribed" && (
           <div style={{margin:"12px 0",background:neonDim,border:`0.5px solid ${neonBorder}`,borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
             <span style={{fontSize:12,color:neonText}}>推しの新着投稿をリアルタイムで受け取ろう</span>
             <button onClick={handleSubscribe} style={{background:neon,color:"#000",fontSize:11,fontWeight:700,padding:"6px 14px",borderRadius:20,border:"none",cursor:"pointer",whiteSpace:"nowrap"}}>{t.notifyOn}</button>
           </div>
         )}
-
-        {/* 通知ON済みバナー */}
-        {notifyStatus === "subscribed" && (
+        {notifyStatus==="subscribed" && (
           <div style={{margin:"12px 0",background:surface,border:`0.5px solid ${neonBorder}`,borderRadius:12,padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
             <span style={{fontSize:12,color:neonText}}>{t.notifyDone}</span>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={sendTestNotification} style={{background:accent,color:"#fff",fontSize:11,fontWeight:500,padding:"5px 12px",borderRadius:20,border:"none",cursor:"pointer",whiteSpace:"nowrap"}}>{t.testNotify}</button>
-              <button onClick={handleUnsubscribe} style={{background:surfaceAlt,color:textMuted,fontSize:11,padding:"5px 12px",borderRadius:20,border:`0.5px solid ${border}`,cursor:"pointer",whiteSpace:"nowrap"}}>{t.notifyOff}</button>
+              <button onClick={sendTestNotification} style={{background:accent,color:"#fff",fontSize:11,fontWeight:500,padding:"5px 12px",borderRadius:20,border:"none",cursor:"pointer"}}>{t.testNotify}</button>
+              <button onClick={handleUnsubscribe} style={{background:surfaceAlt,color:textMuted,fontSize:11,padding:"5px 12px",borderRadius:20,border:`0.5px solid ${border}`,cursor:"pointer"}}>{t.notifyOff}</button>
             </div>
           </div>
         )}
 
-        {/* 検索バー */}
         <div style={{padding:"8px 0 12px"}}>
           <div style={{background:surface,border:`0.5px solid ${borderStrong}`,borderRadius:12,display:"flex",alignItems:"center",gap:8,padding:"10px 14px"}}>
             <span style={{fontSize:15,color:textMuted}}>🔍</span>
@@ -230,10 +318,8 @@ export default function OshiPulse() {
                 <button key={i} className="tab-btn" onClick={()=>setActiveTab(i)} style={{flex:1,padding:"7px 0",borderRadius:8,fontSize:isMobile?11:13,fontWeight:activeTab===i?500:400,background:activeTab===i?surface:"transparent",color:activeTab===i?(i===1?neonText:text):textMuted,boxShadow:activeTab===i?`0 0 0 0.5px ${border}`:"none"}}>{label}</button>
               ))}
             </div>
-
             {loading&&<div style={{display:"flex",justifyContent:"center",padding:"40px 0"}}><div className="spinner"/></div>}
             {!loading&&error&&<div style={{textAlign:"center",padding:"40px 0",color:textMuted,fontSize:13}}>{t.error}</div>}
-
             {!loading&&!error&&(
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
                 {posts.length===0?(
@@ -282,6 +368,29 @@ export default function OshiPulse() {
           </div>
 
           <div style={{display:"flex",flexDirection:"column",gap:12,marginTop:isMobile?4:0}}>
+            {/* 推し登録（ログイン時のみ） */}
+            {user && (
+              <div style={{background:surface,border:`0.5px solid ${border}`,borderRadius:14,padding:"14px 16px"}}>
+                <div style={{fontSize:11,fontWeight:500,color:textMuted,letterSpacing:0.8,marginBottom:12,textTransform:"uppercase"}}>{t.myOshi}</div>
+                <div style={{display:"flex",gap:6,marginBottom:12}}>
+                  <input value={oshiHandle} onChange={e=>setOshiHandle(e.target.value)} placeholder={t.oshiPlaceholder}
+                    onKeyDown={e=>{if(e.key==="Enter")addOshi();}}
+                    style={{flex:1,background:surfaceAlt,border:`0.5px solid ${border}`,borderRadius:8,padding:"6px 10px",fontSize:11,color:text,minWidth:0}}/>
+                  <button onClick={addOshi} style={{background:accent,color:"#fff",border:"none",borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap"}}>{t.addBtn}</button>
+                </div>
+                {oshiList.length>0 && (
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {oshiList.map(handle=>(
+                      <div key={handle} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 8px",background:surfaceAlt,borderRadius:8}}>
+                        <span style={{fontSize:12,color:text,cursor:"pointer"}} onClick={()=>fetchPosts(handle)}>@{handle}</span>
+                        <button onClick={()=>removeOshi(handle)} style={{background:"none",border:"none",color:textMuted,cursor:"pointer",fontSize:14,padding:"0 4px"}}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={{background:surface,border:`0.5px solid ${border}`,borderRadius:14,padding:"14px 16px"}}>
               <div style={{fontSize:11,fontWeight:500,color:textMuted,letterSpacing:0.8,marginBottom:12,textTransform:"uppercase"}}>{t.radar}</div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
