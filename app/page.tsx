@@ -174,7 +174,7 @@ export default function OshiPulse() {
         .creator-row:hover{background:${d?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.03)"}}
         .ctrl-btn{transition:opacity 0.15s;cursor:pointer}
         .ctrl-btn:hover{opacity:0.7}
-        .tab-btn{transition:all 0.2s;cursor:pointer;border:none}
+        .tab-btn{transition:all 0.2s;cursor:pointer;border:none;padding:7px 4px!important}
         .spinner{animation:spin 0.8s linear infinite;border:2px solid ${border};border-top-color:${accent};border-radius:50%;width:20px;height:20px}
         .modal-overlay{animation:fadeIn 0.2s ease}
         .account-card:hover{background:${d?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.02)"}}
