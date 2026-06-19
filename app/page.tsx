@@ -256,9 +256,9 @@ export default function OshiPulse() {
 
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 280px",gap:12}}>
           <div>
-            <div style={{display:"flex",gap:2,marginBottom:12,background:surfaceAlt,borderRadius:10,padding:3,border:`0.5px solid ${border}`}}>
+            <div style={{display:"flex",gap:4,marginBottom:12}}>
               {t.tabs.map((label,i)=>(
-                <button key={i} className="tab-btn" onClick={()=>setActiveTab(i)} style={{flex:1,padding:"7px 0",borderRadius:8,fontSize:isMobile?10:12,fontWeight:activeTab===i?500:400,background:activeTab===i?surface:"transparent",color:activeTab===i?(i===1?neonText:text):textMuted,boxShadow:activeTab===i?`0 0 0 0.5px ${border}`:"none"}}>{label}</button>
+                <button key={i} className="tab-btn" onClick={()=>setActiveTab(i)} style={{flex:1,padding:"8px 2px",borderRadius:8,fontSize:11,fontWeight:activeTab===i?600:400,background:activeTab===i?accent:"transparent",color:activeTab===i?"#fff":textMuted,border:`1px solid ${activeTab===i?accent:border}`}}>{label}</button>
               ))}
             </div>
 
