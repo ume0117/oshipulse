@@ -196,7 +196,7 @@ export default function OshiPulse() {
 
   // ── tab styles ──
   const tabStyle=(i:number)=>({
-    flex:1 as const, padding:"8px 6px", borderRadius:8, fontSize:13, fontWeight:(tab===i?600:400) as const,
+    flex:1 as const, padding:"8px 6px", borderRadius:8, fontSize:13, fontWeight:tab===i?600:400,
     background:tab===i?accent:surface, color:tab===i?"#fff":muted,
     border:`1px solid ${tab===i?accent:border}`, cursor:"pointer" as const, transition:"all 0.2s",
   });
