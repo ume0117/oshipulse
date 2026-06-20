@@ -357,7 +357,7 @@ export default function OshiPulse() {
                     return (
                       <div key={a.did} className="pc ah"
                         style={{background:surface,border:`1px solid ${border}`,borderRadius:14,padding:"14px 16px",cursor:"pointer"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:a.description?8:10}} onClick={()=>fetchPosts(a.handle)}>
+                        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:a.description?8:10}} onClick={()=>fetchPosts(a.handle,true)}>
                           {a.avatar?<img src={a.avatar} alt="" style={{width:44,height:44,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>:
                             <div style={{width:44,height:44,borderRadius:"50%",background:c+"22",border:`2px solid ${c}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:c,flexShrink:0}}>{ini(name)}</div>}
                           <div style={{flex:1,minWidth:0}}>
