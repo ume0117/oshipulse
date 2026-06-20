@@ -134,10 +134,13 @@ export default function OshiPulse() {
   const neonTxt    = dark?"#00e5a0":"#007a5e";
 
   // ── fetch ──
-  const fetchPosts=async(q:string)=>{
+  const fetchPosts=async(q:string,author=false)=>{
     if(!q.trim())return;
     setLoading(true);setErr("");
-    try{const r=await fetch(`/api/bluesky?q=${encodeURIComponent(q)}`);const d=await r.json();if(d.posts){setPosts(d.posts);setTab(1);}else setErr("none");}
+    try{
+      const url=author?`/api/bluesky?q=${encodeURIComponent(q)}&type=author`:`/api/bluesky?q=${encodeURIComponent(q)}`;
+      const r=await fetch(url);const d=await r.json();
+      if(d.posts){setPosts(d.posts);setTab(1);}else setErr("none");}
     catch{setErr("err");}finally{setLoading(false);}
   };
   const fetchActors=async(q:string)=>{
@@ -364,7 +367,7 @@ export default function OshiPulse() {
                         </div>
                         {a.description&&<p style={{fontSize:12,color:muted,marginBottom:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.description}</p>}
                         <div style={{display:"flex",gap:8}}>
-                          <button onClick={()=>fetchPosts(a.handle)}
+                          <button onClick={()=>fetchPosts(a.handle,true)}
                             style={{flex:1,background:surfaceAlt,color:txt,border:`1px solid ${border}`,borderRadius:8,padding:"7px 0",fontSize:12,cursor:"pointer"}}>
                             {t.viewPosts}
                           </button>
