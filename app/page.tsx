@@ -6,7 +6,6 @@ const I18N = {
     searchPlaceholder:"キーワード または @handle で検索",
     searchBtn:"検索",
     tabFeed:"フィード",
-    tabPosts:"投稿",
     tabUsers:"アカウント",
     radar:"推しレーダー",
     prediction:"次の投稿予測",
@@ -30,7 +29,6 @@ const I18N = {
     searchPlaceholder:"Keyword or @handle to search",
     searchBtn:"Search",
     tabFeed:"Feed",
-    tabPosts:"Posts",
     tabUsers:"Users",
     radar:"Oshi Radar",
     prediction:"Next Post Prediction",
@@ -174,7 +172,7 @@ export default function OshiPulse() {
   const handleSearch=()=>{
     if(!query.trim())return;
     if(query.startsWith("@")||tab===2)fetchActors(query.replace(/^@/,""));
-    else fetchPosts(query);
+    else{fetchPosts(query);setTab(0);}
   };
 
   // ── auth ──
@@ -361,7 +359,6 @@ export default function OshiPulse() {
             {/* Tabs */}
             <div style={{display:"flex",gap:6,marginBottom:14}}>
               <button style={tabStyle(0)} onClick={()=>{setTab(0);if(oshiList.length>0)fetchFeed(oshiList);else fetchPosts("art");}}>{t.tabFeed}</button>
-              <button style={tabStyle(1)} onClick={()=>setTab(1)}>{t.tabPosts}</button>
               <button style={tabStyle(2)} onClick={()=>setTab(2)}>{t.tabUsers}</button>
             </div>
 
