@@ -185,6 +185,7 @@ export default function OshiPulse() {
       const reg=await navigator.serviceWorker.ready;
       const s=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:toUint8(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!).buffer as ArrayBuffer});
       setSub(s);setNotif("on");
+      await fetch("/api/push/subscribe",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:s,userId:user?.id})}).catch(()=>{});
     }catch{setNotif("off");}
   };
   const disablePush=async()=>{if(sub){await sub.unsubscribe();setSub(null);setNotif("idle");}};
