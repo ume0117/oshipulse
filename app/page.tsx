@@ -114,7 +114,7 @@ export default function OshiPulse() {
   },[]);
 
   useEffect(()=>{const t=setInterval(()=>setPulse(p=>!p),1200);return()=>clearInterval(t);},[]);
-  useEffect(()=>{fetchPosts("art");},[]);
+  useEffect(()=>{ const saved=localStorage.getItem("oshipulse_oshi"); const list=saved?JSON.parse(saved):[]; if(list.length>0)fetchFeed(list); else fetchPosts("art"); },[oshiList.length]);
 
   const dark=theme==="auto"?sysDark:theme==="dark";
   const cycleTheme=useCallback(()=>setTheme(t=>t==="auto"?"dark":t==="dark"?"light":"auto"),[]);
@@ -149,6 +149,28 @@ export default function OshiPulse() {
     try{const r=await fetch(`/api/users?q=${encodeURIComponent(q)}`);const d=await r.json();if(d.actors){setActors(d.actors);setTab(2);}else setErr("none");}
     catch{setErr("err");}finally{setLoading(false);}
   };
+  const fetchFeed = async (list: string[]) => {
+    if (list.length === 0) return;
+    setLoading(true); setErr("");
+    try {
+      const results = await Promise.all(
+        list.slice(0, 5).map(handle =>
+          fetch(`/api/bluesky?q=${encodeURIComponent(handle)}&type=author`)
+            .then(r => r.json())
+            .then(d => d.posts || [])
+            .catch(() => [])
+        )
+      );
+      const merged = (results as any[])
+        .flat()
+        .sort((a: any, b: any) => new Date(b.record.createdAt).getTime() - new Date(a.record.createdAt).getTime())
+        .slice(0, 20);
+      setPosts(merged);
+      setTab(0);
+    } catch { setErr("err"); }
+    finally { setLoading(false); }
+  };
+
   const handleSearch=()=>{
     if(!query.trim())return;
     if(query.startsWith("@")||tab===2)fetchActors(query.replace(/^@/,""));
@@ -338,7 +360,7 @@ export default function OshiPulse() {
 
             {/* Tabs */}
             <div style={{display:"flex",gap:6,marginBottom:14}}>
-              <button style={tabStyle(0)} onClick={()=>setTab(0)}>{t.tabFeed}</button>
+              <button style={tabStyle(0)} onClick={()=>{setTab(0);if(oshiList.length>0)fetchFeed(oshiList);else fetchPosts("art");}}>{t.tabFeed}</button>
               <button style={tabStyle(1)} onClick={()=>setTab(1)}>{t.tabPosts}</button>
               <button style={tabStyle(2)} onClick={()=>setTab(2)}>{t.tabUsers}</button>
             </div>
