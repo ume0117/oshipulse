@@ -439,7 +439,7 @@ export default function OshiPulse() {
             {/* Pro Upgrade */}
             {user&&(
               <div style={{background:'linear-gradient(135deg,#3b82f6,#a855f7)',borderRadius:14,padding:'14px 16px',marginBottom:0}}>
-                <div style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.8)',letterSpacing:1,marginBottom:6,textTransform:'uppercase'}}>OshiPulse Pro</div>
+                <div style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.9)',letterSpacing:0,marginBottom:6}}>OshiPulse Pro</div>
                 <div style={{fontSize:12,color:'#fff',marginBottom:10}}>推しの自動通知・プッシュ通知</div>
                 <div style={{fontSize:20,fontWeight:800,color:'#fff',marginBottom:10}}>$5 <span style={{fontSize:12,fontWeight:400}}>/月</span></div>
                 <button onClick={async()=>{
