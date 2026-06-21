@@ -445,7 +445,7 @@ export default function OshiPulse() {
                 <button onClick={async()=>{
                   const r=await fetch('/api/stripe/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:user.id})});
                   const d=await r.json();
-                  if(d.url)window.location.href=d.url;
+                  if(d.url)window.location.href=d.url; else alert("エラー: " + (d.error || "不明なエラー"));
                 }} style={{width:'100%',background:'#fff',color:'#3b82f6',border:'none',borderRadius:10,padding:'10px',fontSize:13,fontWeight:700,cursor:'pointer',display:'block'}}>
                   今すぐ始める →
                 </button>
