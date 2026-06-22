@@ -206,6 +206,9 @@ export default function OshiPulse() {
     // 次の投稿予測（最も活発な推し）
     const mostActive = (results as {handle:string;name:string;avatar?:string;activity:number;color:string;}[]).sort((a,b)=>b.activity-a.activity)[0];
     if(mostActive){
+      if(mostActive.activity===0){
+        setPrediction({name:mostActive.name,avatar:mostActive.avatar,hoursUntil:-1});
+      } else {
       const posts = allPosts[0] || [];
       if(posts.length >= 2){
 
@@ -219,6 +222,7 @@ export default function OshiPulse() {
         setPrediction({name:mostActive.name, avatar:mostActive.avatar, hoursUntil});
       } else {
         setPrediction({name:mostActive.name, avatar:mostActive.avatar, hoursUntil:-1});
+      }
       }
     }
   };
