@@ -93,6 +93,7 @@ export default function OshiPulse() {
   const [lErr,setLErr]         = useState("");
   const [oshiHandle,setOshiHandle]= useState("");
   const [oshiList,setOshiList] = useState<string[]>([]);
+  const [isPro,setIsPro] = useState(false);
 
   useEffect(()=>{
     setSysDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -105,7 +106,11 @@ export default function OshiPulse() {
       });
     }
     const u=localStorage.getItem("oshipulse_user");
-    if(u)setUser(JSON.parse(u));
+    if(u){
+      const usr=JSON.parse(u);
+      setUser(usr);
+      fetch(`/api/users/pro?userId=${usr.id}`).then(r=>r.json()).then(d=>{if(d.is_pro)setIsPro(true);}).catch(()=>{});
+    }
     const o=localStorage.getItem("oshipulse_oshi");
     if(o)setOshiList(JSON.parse(o));
     return()=>mq.removeEventListener("change",h);
@@ -181,7 +186,9 @@ export default function OshiPulse() {
     try{
       const r=await fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({handle:lHandle,password:lPass})});
       const d=await r.json();
-      if(d.ok){setUser(d.user);localStorage.setItem("oshipulse_user",JSON.stringify(d.user));setShowLogin(false);setLHandle("");setLPass("");}
+      if(d.ok){setUser(d.user);localStorage.setItem("oshipulse_user",JSON.stringify(d.user));setShowLogin(false);setLHandle("");setLPass("");
+        fetch(`/api/users/pro?userId=${d.user.id}`).then(r=>r.json()).then(dd=>{if(dd.is_pro)setIsPro(true);}).catch(()=>{});
+      }
       else setLErr(t.loginError);
     }catch{setLErr(t.loginError);}finally{setLLoading(false);}
   };
@@ -297,6 +304,7 @@ export default function OshiPulse() {
           </button>
           {user?(
             <div style={{display:"flex",alignItems:"center",gap:8}}>
+              {isPro&&<span style={{fontSize:9,background:"linear-gradient(135deg,#3b82f6,#a855f7)",color:"#fff",padding:"2px 8px",borderRadius:20,fontWeight:700}}>PRO</span>}
               {user.avatar?<img src={user.avatar} alt="" style={{width:28,height:28,borderRadius:"50%",objectFit:"cover"}}/>:
                 <div style={{width:28,height:28,borderRadius:"50%",background:accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:accent}}>{ini(user.handle)}</div>}
               <button onClick={doLogout}
@@ -456,7 +464,7 @@ export default function OshiPulse() {
           <div style={{width:260,flexShrink:0,display:"flex",flexDirection:"column",gap:12}}>
 
             {/* Pro Upgrade */}
-            {user&&(
+            {user&&!isPro&&(
               <div style={{background:'linear-gradient(135deg,#3b82f6,#a855f7)',borderRadius:14,padding:'14px 16px',marginBottom:0}}>
                 <div style={{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.9)',letterSpacing:0,marginBottom:6}}>OshiPulse Pro</div>
                 <div style={{fontSize:12,color:'#fff',marginBottom:10}}>推しの自動通知・プッシュ通知</div>
