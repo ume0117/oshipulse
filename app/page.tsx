@@ -76,7 +76,7 @@ export default function OshiPulse() {
   const [sysDark,setSysDark]   = useState(false);
   const [lang,setLang]         = useState<"ja"|"en">("ja");
   const [query,setQuery]       = useState("");
-  const [tab,setTab]           = useState(0);
+  const [tab,setTab]           = useState(2);
   const [pulse,setPulse]       = useState(true);
   const [posts,setPosts]       = useState<Post[]>([]);
   const [actors,setActors]     = useState<Actor[]>([]);
@@ -121,7 +121,7 @@ export default function OshiPulse() {
 
   useEffect(()=>{const t=setInterval(()=>setPulse(p=>!p),1200);return()=>clearInterval(t);},[]);
   useEffect(()=>{if(oshiList.length>0)fetchRadar(oshiList);},[oshiList.length]);
-  useEffect(()=>{ const saved=localStorage.getItem("oshipulse_oshi"); const list=saved?JSON.parse(saved):[]; if(list.length>0)fetchFeed(list); else fetchPosts("art"); },[oshiList.length]);
+  useEffect(()=>{ const saved=localStorage.getItem("oshipulse_oshi"); const list=saved?JSON.parse(saved):[]; if(list.length>0){fetchFeed(list);setTab(0);} },[oshiList.length]);
 
   const dark=theme==="auto"?sysDark:theme==="dark";
   const cycleTheme=useCallback(()=>setTheme(t=>t==="auto"?"dark":t==="dark"?"light":"auto"),[]);
@@ -372,7 +372,7 @@ export default function OshiPulse() {
           </button>
           {user?(
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              {isPro&&<span style={{fontSize:9,background:"linear-gradient(135deg,#3b82f6,#a855f7)",color:"#fff",padding:"2px 8px",borderRadius:20,fontWeight:700}}>PRO</span>}
+              {isPro&&<span style={{fontSize:9,background:"linear-gradient(135deg,#3b82f6,#a855f7)",color:"#fff",padding:"2px 8px",borderRadius:20,fontWeight:700}}>Pro</span>}
               {user.avatar?<img src={user.avatar} alt="" style={{width:28,height:28,borderRadius:"50%",objectFit:"cover"}}/>:
                 <div style={{width:28,height:28,borderRadius:"50%",background:accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:accent}}>{ini(user.handle)}</div>}
               <button onClick={doLogout}
