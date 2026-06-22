@@ -158,7 +158,7 @@ export default function OshiPulse() {
   };
   const RADAR_COLORS = ["#3b82f6","#a855f7","#10b981","#f59e0b","#ef4444","#06b6d4"];
 
-  const fetchRadar = async (list: string[]) => {
+  const fetchRadar = async (list: string[], singleMode=false) => {
     if (list.length === 0) { setRadarData([]); return; }
     const now = Date.now();
     const week = 7 * 24 * 60 * 60 * 1000;
@@ -185,7 +185,7 @@ export default function OshiPulse() {
         }
       })
     );
-    setRadarData(results);
+    if(!singleMode)setRadarData(results);
 
     // 今週の推しムードを計算（曜日別投稿数）
     const mood = [0,0,0,0,0,0,0];
@@ -572,9 +572,12 @@ export default function OshiPulse() {
             {/* Radar */}
             <div style={{background:surface,border:`1px solid ${border}`,borderRadius:14,padding:"14px 16px"}}>
               <div style={{fontSize:11,fontWeight:600,color:muted,letterSpacing:1,marginBottom:12,textTransform:"uppercase"}}>{t.radar}</div>
-              {(oshiList.length>0&&radarData.length>0?radarData:DEMO_CREATORS).map((c,i)=>(
+              {(oshiList.length>0&&radarData.length>0?radarData:[]).length===0&&oshiList.length===0?(
+                <div style={{fontSize:12,color:muted,padding:"8px 0"}}>推しを登録するとレーダーが表示されます</div>
+              ):null}
+              {(oshiList.length>0&&radarData.length>0?radarData:[]).map((c,i)=>(
                 <div key={c.handle} className="ah"
-                  onClick={()=>fetchPosts(c.handle,true)}
+                  onClick={()=>{fetchPosts(c.handle,true);fetchRadar([c.handle],true);}}
                   style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderRadius:8,cursor:"pointer",marginBottom:6,transition:"background 0.15s"}}>
                   {"avatar" in c&&(c as any).avatar?<img src={(c as any).avatar} alt="" style={{width:30,height:30,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>:<div style={{width:30,height:30,borderRadius:"50%",background:c.color+"22",border:`2px solid ${c.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:c.color,flexShrink:0}}>{"av" in c?(c as any).av:(c.name||c.handle).slice(0,2).toUpperCase()}</div>}
                   <div style={{flex:1,minWidth:0}}>
