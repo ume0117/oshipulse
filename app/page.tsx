@@ -542,7 +542,7 @@ export default function OshiPulse() {
                 <div key={c.handle} className="ah"
                   onClick={()=>fetchPosts(c.handle)}
                   style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderRadius:8,cursor:"pointer",marginBottom:6,transition:"background 0.15s"}}>
-                  <div style={{width:30,height:30,borderRadius:"50%",background:c.color+"22",border:`2px solid ${c.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:c.color,flexShrink:0}}>{"av" in c?(c as any).av:(c.name||c.handle).slice(0,2).toUpperCase()}</div>
+                  {"avatar" in c&&(c as any).avatar?<img src={(c as any).avatar} alt="" style={{width:30,height:30,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>:<div style={{width:30,height:30,borderRadius:"50%",background:c.color+"22",border:`2px solid ${c.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:c.color,flexShrink:0}}>{"av" in c?(c as any).av:(c.name||c.handle).slice(0,2).toUpperCase()}</div>}
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:12,fontWeight:500,color:txt,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
                     <div style={{height:3,background:dark?"rgba(255,255,255,0.07)":"rgba(0,0,0,0.07)",borderRadius:2,marginTop:4,overflow:"hidden"}}>
