@@ -96,6 +96,8 @@ export default function OshiPulse() {
   const [cursor,setCursor] = useState<string|null>(null);
   const [hasMore,setHasMore] = useState(false);
   const [loadingMore,setLoadingMore] = useState(false);
+  const [lastQuery,setLastQuery] = useState("");
+  const [lastAuthor,setLastAuthor] = useState(false);
 
   useEffect(()=>{
     setSysDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -149,7 +151,7 @@ export default function OshiPulse() {
         setPosts(p=>append?[...p,...d.posts]:d.posts);
         setCursor(d.cursor||null);
         setHasMore(!!d.cursor);
-        if(!append)setTab(1);
+        if(!append){setTab(1);setLastQuery(q);setLastAuthor(author);}
       }else setErr("none");
     }catch{setErr("err");}
     finally{if(append)setLoadingMore(false);else setLoading(false);}
@@ -382,7 +384,7 @@ export default function OshiPulse() {
             {/* Load More Button */}
             {!loading&&!err&&tab!==2&&hasMore&&(
               <div style={{textAlign:"center",padding:"16px 0"}}>
-                <button onClick={()=>fetchPosts(query,false,true)}
+                <button onClick={()=>fetchPosts(lastQuery,lastAuthor,true)}
                   disabled={loadingMore}
                   style={{background:surface,color:txt,border:`1px solid ${border}`,borderRadius:10,padding:"10px 32px",fontSize:13,fontWeight:500,cursor:"pointer"}}>
                   {loadingMore?"読み込み中...":"もっと見る"}
