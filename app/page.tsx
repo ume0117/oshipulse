@@ -441,7 +441,7 @@ export default function OshiPulse() {
 
             {/* Tabs */}
             <div style={{display:"flex",gap:6,marginBottom:14}}>
-              <button style={tabStyle(0)} onClick={()=>{setTab(0);if(oshiList.length>0)fetchFeed(oshiList);else fetchPosts("art");}}>{t.tabFeed}</button>
+              {oshiList.length>0&&<button style={tabStyle(0)} onClick={()=>{setTab(0);if(oshiList.length>0)fetchFeed(oshiList);else fetchPosts("art");}}>{t.tabFeed}</button>}
               <button style={tabStyle(2)} onClick={()=>setTab(2)}>{t.tabUsers}</button>
             </div>
 
