@@ -204,7 +204,7 @@ export default function OshiPulse() {
     setMoodData(mood.map(v=>Math.round((v/maxMood)*100)));
 
     // 次の投稿予測（最も活発な推し）
-    const mostActive = (results as {handle:string;name:string;avatar?:string;activity:number;color:string;}[]).sort((a,b)=>b.activity-a.activity)[0];
+    const mostActive = [...results].sort((a,b)=>b.activity-a.activity)[0] as {handle:string;name:string;avatar?:string;activity:number;color:string;};
     if(mostActive){
       if(mostActive.activity===0){
         setPrediction({name:mostActive.name,avatar:mostActive.avatar,hoursUntil:-1});
