@@ -95,6 +95,8 @@ export default function OshiPulse() {
   const [oshiList,setOshiList] = useState<string[]>([]);
   const [isPro,setIsPro] = useState(false);
   const [radarData,setRadarData] = useState<{handle:string;name:string;avatar?:string;activity:number;color:string;}[]>([]);
+  const [moodData,setMoodData] = useState<number[]>([0,0,0,0,0,0,0]);
+  const [prediction,setPrediction] = useState<{name:string;avatar?:string;hoursUntil:number}|null>(null);
 
   useEffect(()=>{
     setSysDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -184,6 +186,38 @@ export default function OshiPulse() {
       })
     );
     setRadarData(results);
+
+    // 今週の推しムードを計算（曜日別投稿数）
+    const mood = [0,0,0,0,0,0,0];
+    const allPosts = await Promise.all(
+      list.slice(0,3).map(handle =>
+        fetch(`/api/bluesky?q=${encodeURIComponent(handle)}&type=author`)
+          .then(r=>r.json()).then(d=>d.posts||[]).catch(()=>[])
+      )
+    );
+    allPosts.flat().forEach((p:any)=>{
+      const day = new Date(p.record.createdAt).getDay();
+      const idx = day===0?6:day-1; // 月=0...日=6
+      mood[idx]++;
+    });
+    const maxMood = Math.max(...mood, 1);
+    setMoodData(mood.map(v=>Math.round((v/maxMood)*100)));
+
+    // 次の投稿予測（最も活発な推し）
+    const mostActive = results.sort((a,b)=>b.activity-a.activity)[0];
+    if(mostActive && mostActive.activity > 0){
+      const posts = allPosts[0] || [];
+      if(posts.length >= 2){
+        const intervals = posts.slice(0,5).map((p:any,i:number)=>{
+          if(i===0) return 0;
+          return new Date(posts[i-1].record.createdAt).getTime() - new Date(p.record.createdAt).getTime();
+        }).filter((_:number,i:number)=>i>0);
+        const avgMs = intervals.reduce((a:number,b:number)=>a+b,0)/intervals.length;
+        const lastPost = new Date(posts[0].record.createdAt).getTime();
+        const hoursUntil = Math.max(0, Math.round((lastPost + avgMs - Date.now()) / 3600000));
+        setPrediction({name:mostActive.name, avatar:mostActive.avatar, hoursUntil});
+      }
+    }
   };
 
   const fetchFeed = async (list: string[]) => {
@@ -556,28 +590,26 @@ export default function OshiPulse() {
 
             {/* Prediction */}
             <div style={{background:neonDim,border:`1px solid ${neonBdr}`,borderRadius:14,padding:"14px 16px"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                <div style={{fontSize:10,fontWeight:600,color:neonTxt,letterSpacing:1,textTransform:"uppercase",fontFamily:"'Space Mono',monospace"}}>{t.prediction}</div>
-                <span style={{fontSize:9,background:"#a855f722",color:"#a855f7",border:"1px solid #a855f744",padding:"2px 8px",borderRadius:20,fontWeight:600}}>Pro限定</span>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{width:30,height:30,borderRadius:"50%",background:"#3b82f622",border:"2px solid #3b82f644",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#3b82f6",flexShrink:0}}>YU</div>
-                <div>
-                  <div style={{fontSize:12,color:txt,fontWeight:500}}>Yume / 夢</div>
-                  <div style={{fontSize:11,color:neonTxt}}>{t.predictionSub}</div>
+              <div style={{fontSize:10,fontWeight:600,color:neonTxt,letterSpacing:1,marginBottom:10,textTransform:"uppercase",fontFamily:"'Space Mono',monospace"}}>{t.prediction}</div>
+              {prediction?(
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  {prediction.avatar?<img src={prediction.avatar} alt="" style={{width:30,height:30,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>:<div style={{width:30,height:30,borderRadius:"50%",background:"#3b82f622",border:"2px solid #3b82f644",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#3b82f6",flexShrink:0}}>{prediction.name.slice(0,2)}</div>}
+                  <div>
+                    <div style={{fontSize:12,color:txt,fontWeight:500}}>{prediction.name}</div>
+                    <div style={{fontSize:11,color:neonTxt}}>{prediction.hoursUntil===0?"まもなく投稿予測！":`約${prediction.hoursUntil}時間後に投稿の予測`}</div>
+                  </div>
                 </div>
-              </div>
+              ):(
+                <div style={{fontSize:12,color:muted}}>推しを登録すると予測が表示されます</div>
+              )}
             </div>
 
             {/* Mood */}
             <div style={{background:surface,border:`1px solid ${border}`,borderRadius:14,padding:"14px 16px",marginBottom:20}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-                <div style={{fontSize:11,fontWeight:600,color:muted,letterSpacing:1,textTransform:"uppercase"}}>{t.mood}</div>
-                <span style={{fontSize:9,background:"#3b82f622",color:"#3b82f6",border:"1px solid #3b82f644",padding:"2px 8px",borderRadius:20,fontWeight:600}}>近日公開</span>
-              </div>
+              <div style={{fontSize:11,fontWeight:600,color:muted,letterSpacing:1,marginBottom:12,textTransform:"uppercase"}}>{t.mood}</div>
               <div style={{display:"flex",alignItems:"flex-end",gap:5,height:48}}>
-                {[40,55,70,60,85,90,75].map((h,i)=>(
-                  <div key={i} style={{flex:1,height:`${h}%`,background:h>80?neon:(dark?"#1e3a5f":"#dbeafe"),borderRadius:3}}/>
+                {moodData.map((h,i)=>(
+                  <div key={i} style={{flex:1,height:`${Math.max(h,5)}%`,background:h>80?neon:(dark?"#1e3a5f":"#dbeafe"),borderRadius:3}}/>
                 ))}
               </div>
               <div style={{display:"flex",marginTop:6}}>
