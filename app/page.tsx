@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const I18N = {
   ja: {
@@ -98,6 +98,7 @@ export default function OshiPulse() {
   const [loadingMore,setLoadingMore] = useState(false);
   const [lastQuery,setLastQuery] = useState("");
   const [lastAuthor,setLastAuthor] = useState(false);
+  const cursorRef = useRef<string|null>(null);
 
   useEffect(()=>{
     setSysDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -142,13 +143,14 @@ export default function OshiPulse() {
     if(append)setLoadingMore(true); else{setLoading(true);setCursor(null);}
     setErr("");
     try{
-      const c=append?cursor:"";
+      const c=append?cursorRef.current:"";
       const url=author
         ?`/api/bluesky?q=${encodeURIComponent(q)}&type=author${c?`&cursor=${c}`:""}`
         :`/api/bluesky?q=${encodeURIComponent(q)}${c?`&cursor=${c}`:""}` ;
       const r=await fetch(url);const d=await r.json();
       if(d.posts){
         setPosts(p=>append?[...p,...d.posts]:d.posts);
+        cursorRef.current = d.cursor||null;
         setCursor(d.cursor||null);
         setHasMore(!!d.cursor);
         if(!append){setTab(1);setLastQuery(q);setLastAuthor(author);}
