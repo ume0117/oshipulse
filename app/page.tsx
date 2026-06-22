@@ -94,6 +94,7 @@ export default function OshiPulse() {
   const [oshiHandle,setOshiHandle]= useState("");
   const [oshiList,setOshiList] = useState<string[]>([]);
   const [isPro,setIsPro] = useState(false);
+  const [radarData,setRadarData] = useState<{handle:string;name:string;avatar?:string;activity:number;color:string;}[]>([]);
 
   useEffect(()=>{
     setSysDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -117,6 +118,7 @@ export default function OshiPulse() {
   },[]);
 
   useEffect(()=>{const t=setInterval(()=>setPulse(p=>!p),1200);return()=>clearInterval(t);},[]);
+  useEffect(()=>{if(oshiList.length>0)fetchRadar(oshiList);},[oshiList.length]);
   useEffect(()=>{ const saved=localStorage.getItem("oshipulse_oshi"); const list=saved?JSON.parse(saved):[]; if(list.length>0)fetchFeed(list); else fetchPosts("art"); },[oshiList.length]);
 
   const dark=theme==="auto"?sysDark:theme==="dark";
@@ -152,6 +154,38 @@ export default function OshiPulse() {
     try{const r=await fetch(`/api/users?q=${encodeURIComponent(q)}`);const d=await r.json();if(d.actors){setActors(d.actors);setTab(2);}else setErr("none");}
     catch{setErr("err");}finally{setLoading(false);}
   };
+  const RADAR_COLORS = ["#3b82f6","#a855f7","#10b981","#f59e0b","#ef4444","#06b6d4"];
+
+  const fetchRadar = async (list: string[]) => {
+    if (list.length === 0) { setRadarData([]); return; }
+    const now = Date.now();
+    const week = 7 * 24 * 60 * 60 * 1000;
+    const results = await Promise.all(
+      list.slice(0, 6).map(async (handle, i) => {
+        try {
+          const r = await fetch(`/api/bluesky?q=${encodeURIComponent(handle)}&type=author`);
+          const d = await r.json();
+          const posts = d.posts || [];
+          const profile = posts[0]?.author || {};
+          const recentCount = posts.filter((p: any) =>
+            now - new Date(p.record.createdAt).getTime() < week
+          ).length;
+          const activity = Math.min(100, Math.round((recentCount / 10) * 100));
+          return {
+            handle,
+            name: profile.displayName || handle,
+            avatar: profile.avatar,
+            activity,
+            color: RADAR_COLORS[i % RADAR_COLORS.length],
+          };
+        } catch {
+          return { handle, name: handle, activity: 0, color: RADAR_COLORS[i % RADAR_COLORS.length] };
+        }
+      })
+    );
+    setRadarData(results);
+  };
+
   const fetchFeed = async (list: string[]) => {
     if (list.length === 0) return;
     setLoading(true); setErr("");
@@ -503,15 +537,12 @@ export default function OshiPulse() {
 
             {/* Radar */}
             <div style={{background:surface,border:`1px solid ${border}`,borderRadius:14,padding:"14px 16px"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-                <div style={{fontSize:11,fontWeight:600,color:muted,letterSpacing:1,textTransform:"uppercase"}}>{t.radar}</div>
-                <span style={{fontSize:9,background:"#3b82f622",color:"#3b82f6",border:"1px solid #3b82f644",padding:"2px 8px",borderRadius:20,fontWeight:600}}>近日公開</span>
-              </div>
-              {DEMO_CREATORS.map(c=>(
+              <div style={{fontSize:11,fontWeight:600,color:muted,letterSpacing:1,marginBottom:12,textTransform:"uppercase"}}>{t.radar}</div>
+              {(oshiList.length>0&&radarData.length>0?radarData:DEMO_CREATORS).map((c,i)=>(
                 <div key={c.handle} className="ah"
                   onClick={()=>fetchPosts(c.handle)}
                   style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderRadius:8,cursor:"pointer",marginBottom:6,transition:"background 0.15s"}}>
-                  <div style={{width:30,height:30,borderRadius:"50%",background:c.color+"22",border:`2px solid ${c.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:c.color,flexShrink:0}}>{c.av}</div>
+                  <div style={{width:30,height:30,borderRadius:"50%",background:c.color+"22",border:`2px solid ${c.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:c.color,flexShrink:0}}>{"av" in c?(c as any).av:(c.name||c.handle).slice(0,2).toUpperCase()}</div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:12,fontWeight:500,color:txt,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
                     <div style={{height:3,background:dark?"rgba(255,255,255,0.07)":"rgba(0,0,0,0.07)",borderRadius:2,marginTop:4,overflow:"hidden"}}>
