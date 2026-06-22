@@ -207,7 +207,7 @@ export default function OshiPulse() {
     const mostActive = [...results].sort((a,b)=>b.activity-a.activity)[0] as {handle:string;name:string;avatar?:string;activity:number;color:string;};
     if(mostActive){
       if(mostActive.activity===0){
-        setPrediction({name:mostActive.name,avatar:mostActive.avatar,hoursUntil:-1});
+        if(singleMode)setPrediction({name:mostActive.name,avatar:mostActive.avatar,hoursUntil:-1});
       } else {
       const posts = allPosts[0] || [];
       if(posts.length >= 2){
