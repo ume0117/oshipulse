@@ -599,7 +599,7 @@ export default function OshiPulse() {
                   {prediction.avatar?<img src={prediction.avatar} alt="" style={{width:30,height:30,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>:<div style={{width:30,height:30,borderRadius:"50%",background:"#3b82f622",border:"2px solid #3b82f644",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#3b82f6",flexShrink:0}}>{prediction.name.slice(0,2)}</div>}
                   <div>
                     <div style={{fontSize:12,color:txt,fontWeight:500}}>{prediction.name}</div>
-                    <div style={{fontSize:11,color:neonTxt}}>{prediction.hoursUntil===0?"まもなく投稿予測！":`約${prediction.hoursUntil}時間後に投稿の予測`}</div>
+                    <div style={{fontSize:11,color:prediction.hoursUntil===-1?muted:neonTxt}}>{prediction.hoursUntil===0?"まもなく投稿予測！":prediction.hoursUntil===-1?"最近7日間の投稿なし":`約${prediction.hoursUntil}時間後に投稿の予測`}</div>
                   </div>
                 </div>
               ):(
