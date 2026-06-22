@@ -495,7 +495,10 @@ export default function OshiPulse() {
 
             {/* Radar */}
             <div style={{background:surface,border:`1px solid ${border}`,borderRadius:14,padding:"14px 16px"}}>
-              <div style={{fontSize:11,fontWeight:600,color:muted,letterSpacing:1,marginBottom:12,textTransform:"uppercase"}}>{t.radar}</div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                <div style={{fontSize:11,fontWeight:600,color:muted,letterSpacing:1,textTransform:"uppercase"}}>{t.radar}</div>
+                <span style={{fontSize:9,background:"#3b82f622",color:"#3b82f6",border:"1px solid #3b82f644",padding:"2px 8px",borderRadius:20,fontWeight:600}}>近日公開</span>
+              </div>
               {DEMO_CREATORS.map(c=>(
                 <div key={c.handle} className="ah"
                   onClick={()=>fetchPosts(c.handle)}
@@ -514,7 +517,10 @@ export default function OshiPulse() {
 
             {/* Prediction */}
             <div style={{background:neonDim,border:`1px solid ${neonBdr}`,borderRadius:14,padding:"14px 16px"}}>
-              <div style={{fontSize:10,fontWeight:600,color:neonTxt,letterSpacing:1,marginBottom:10,textTransform:"uppercase",fontFamily:"'Space Mono',monospace"}}>{t.prediction}</div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <div style={{fontSize:10,fontWeight:600,color:neonTxt,letterSpacing:1,textTransform:"uppercase",fontFamily:"'Space Mono',monospace"}}>{t.prediction}</div>
+                <span style={{fontSize:9,background:"#a855f722",color:"#a855f7",border:"1px solid #a855f744",padding:"2px 8px",borderRadius:20,fontWeight:600}}>Pro限定</span>
+              </div>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <div style={{width:30,height:30,borderRadius:"50%",background:"#3b82f622",border:"2px solid #3b82f644",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#3b82f6",flexShrink:0}}>YU</div>
                 <div>
@@ -526,7 +532,10 @@ export default function OshiPulse() {
 
             {/* Mood */}
             <div style={{background:surface,border:`1px solid ${border}`,borderRadius:14,padding:"14px 16px",marginBottom:20}}>
-              <div style={{fontSize:11,fontWeight:600,color:muted,letterSpacing:1,marginBottom:12,textTransform:"uppercase"}}>{t.mood}</div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                <div style={{fontSize:11,fontWeight:600,color:muted,letterSpacing:1,textTransform:"uppercase"}}>{t.mood}</div>
+                <span style={{fontSize:9,background:"#3b82f622",color:"#3b82f6",border:"1px solid #3b82f644",padding:"2px 8px",borderRadius:20,fontWeight:600}}>近日公開</span>
+              </div>
               <div style={{display:"flex",alignItems:"flex-end",gap:5,height:48}}>
                 {[40,55,70,60,85,90,75].map((h,i)=>(
                   <div key={i} style={{flex:1,height:`${h}%`,background:h>80?neon:(dark?"#1e3a5f":"#dbeafe"),borderRadius:3}}/>
