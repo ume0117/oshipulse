@@ -8,9 +8,9 @@ export async function GET(req: NextRequest) {
   try {
     let url: string;
     if (type === "author") {
-      url = `https://api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(query)}&limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+      url = `https://api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(query)}&limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
     } else {
-      url = `https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(query)}&limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+      url = `https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(query)}&limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
     }
     const res  = await fetch(url);
     const data = await res.json();

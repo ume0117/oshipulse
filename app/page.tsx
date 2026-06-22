@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const I18N = {
   ja: {
@@ -93,12 +93,6 @@ export default function OshiPulse() {
   const [lErr,setLErr]         = useState("");
   const [oshiHandle,setOshiHandle]= useState("");
   const [oshiList,setOshiList] = useState<string[]>([]);
-  const [cursor,setCursor] = useState<string|null>(null);
-  const [hasMore,setHasMore] = useState(false);
-  const [loadingMore,setLoadingMore] = useState(false);
-  const [lastQuery,setLastQuery] = useState("");
-  const [lastAuthor,setLastAuthor] = useState(false);
-  const cursorRef = useRef<string|null>(null);
 
   useEffect(()=>{
     setSysDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -138,25 +132,14 @@ export default function OshiPulse() {
   const neonTxt    = dark?"#00e5a0":"#007a5e";
 
   // ── fetch ──
-  const fetchPosts=async(q:string,author=false,append=false)=>{
+  const fetchPosts=async(q:string,author=false)=>{
     if(!q.trim())return;
-    if(append)setLoadingMore(true); else{setLoading(true);setCursor(null);}
-    setErr("");
+    setLoading(true);setErr("");
     try{
-      const c=append?cursorRef.current:"";
-      const url=author
-        ?`/api/bluesky?q=${encodeURIComponent(q)}&type=author${c?`&cursor=${encodeURIComponent(c)}`:""}`
-        :`/api/bluesky?q=${encodeURIComponent(q)}${c?`&cursor=${encodeURIComponent(c)}`:""}` ;
+      const url=author?`/api/bluesky?q=${encodeURIComponent(q)}&type=author`:`/api/bluesky?q=${encodeURIComponent(q)}`;
       const r=await fetch(url);const d=await r.json();
-      if(d.posts){
-        setPosts(p=>append?[...p,...d.posts]:d.posts);
-        cursorRef.current = d.cursor||null;
-        setCursor(d.cursor||null);
-        setHasMore(!!d.cursor);
-        if(!append){setTab(1);setLastQuery(q);setLastAuthor(author);}
-      }else setErr("none");
-    }catch{setErr("err");}
-    finally{if(append)setLoadingMore(false);else setLoading(false);}
+      if(d.posts){setPosts(d.posts);setTab(1);}else setErr("none");
+    }catch{setErr("err");}finally{setLoading(false);}
   };
   const fetchActors=async(q:string)=>{
     if(!q.trim())return;
@@ -382,17 +365,6 @@ export default function OshiPulse() {
             {/* Loading */}
             {loading&&<div style={{display:"flex",justifyContent:"center",padding:"40px 0"}}><div className="sp"/></div>}
             {!loading&&err&&<div style={{textAlign:"center",padding:"40px 0",color:muted,fontSize:13}}>{t.noResults}</div>}
-
-            {/* Load More Button */}
-            {!loading&&!err&&tab!==2&&hasMore&&(
-              <div style={{textAlign:"center",padding:"16px 0"}}>
-                <button onClick={()=>fetchPosts(lastQuery,lastAuthor,true)}
-                  disabled={loadingMore}
-                  style={{background:surface,color:txt,border:`1px solid ${border}`,borderRadius:10,padding:"10px 32px",fontSize:13,fontWeight:500,cursor:"pointer"}}>
-                  {loadingMore?"読み込み中...":"もっと見る"}
-                </button>
-              </div>
-            )}
 
             {/* Account results */}
             {!loading&&!err&&tab===2&&(
