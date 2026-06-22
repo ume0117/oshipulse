@@ -121,7 +121,7 @@ export default function OshiPulse() {
 
   useEffect(()=>{const t=setInterval(()=>setPulse(p=>!p),1200);return()=>clearInterval(t);},[]);
   useEffect(()=>{if(oshiList.length>0)fetchRadar(oshiList);},[oshiList.length]);
-  useEffect(()=>{ const saved=localStorage.getItem("oshipulse_oshi"); const list=saved?JSON.parse(saved):[]; if(list.length>0){fetchFeed(list);setTab(0);} },[oshiList.length]);
+  useEffect(()=>{ const saved=localStorage.getItem("oshipulse_oshi"); const list=saved?JSON.parse(saved):[]; if(list.length>0&&tab===0)fetchFeed(list); },[oshiList.length]);
 
   const dark=theme==="auto"?sysDark:theme==="dark";
   const cycleTheme=useCallback(()=>setTheme(t=>t==="auto"?"dark":t==="dark"?"light":"auto"),[]);
