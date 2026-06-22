@@ -610,7 +610,7 @@ export default function OshiPulse() {
                   </div>
                 </div>
               ):(
-                <div style={{fontSize:12,color:muted}}>推しを登録すると予測が表示されます</div>
+                <div style={{fontSize:12,color:muted}}>{oshiList.length>0?"推しレーダーをクリックして予測を見る":"推しを登録すると予測が表示されます"}</div>
               )}
             </div>
 
