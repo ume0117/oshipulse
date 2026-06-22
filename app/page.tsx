@@ -219,9 +219,9 @@ export default function OshiPulse() {
         const avgMs = intervals.reduce((a:number,b:number)=>a+b,0)/intervals.length;
         const lastPost = new Date(posts[0].record.createdAt).getTime();
         const hoursUntil = Math.max(0, Math.round((lastPost + avgMs - Date.now()) / 3600000));
-        setPrediction({name:mostActive.name, avatar:mostActive.avatar, hoursUntil});
+        if(singleMode)setPrediction({name:mostActive.name, avatar:mostActive.avatar, hoursUntil});
       } else {
-        setPrediction({name:mostActive.name, avatar:mostActive.avatar, hoursUntil:-1});
+        if(singleMode)setPrediction({name:mostActive.name, avatar:mostActive.avatar, hoursUntil:-1});
       }
       }
     }
