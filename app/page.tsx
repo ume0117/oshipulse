@@ -574,7 +574,7 @@ export default function OshiPulse() {
               <div style={{fontSize:11,fontWeight:600,color:muted,letterSpacing:1,marginBottom:12,textTransform:"uppercase"}}>{t.radar}</div>
               {(oshiList.length>0&&radarData.length>0?radarData:DEMO_CREATORS).map((c,i)=>(
                 <div key={c.handle} className="ah"
-                  onClick={()=>fetchPosts(c.handle)}
+                  onClick={()=>fetchPosts(c.handle,true)}
                   style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderRadius:8,cursor:"pointer",marginBottom:6,transition:"background 0.15s"}}>
                   {"avatar" in c&&(c as any).avatar?<img src={(c as any).avatar} alt="" style={{width:30,height:30,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>:<div style={{width:30,height:30,borderRadius:"50%",background:c.color+"22",border:`2px solid ${c.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:c.color,flexShrink:0}}>{"av" in c?(c as any).av:(c.name||c.handle).slice(0,2).toUpperCase()}</div>}
                   <div style={{flex:1,minWidth:0}}>
