@@ -145,8 +145,8 @@ export default function OshiPulse() {
     try{
       const c=append?cursorRef.current:"";
       const url=author
-        ?`/api/bluesky?q=${encodeURIComponent(q)}&type=author${c?`&cursor=${c}`:""}`
-        :`/api/bluesky?q=${encodeURIComponent(q)}${c?`&cursor=${c}`:""}` ;
+        ?`/api/bluesky?q=${encodeURIComponent(q)}&type=author${c?`&cursor=${encodeURIComponent(c)}`:""}`
+        :`/api/bluesky?q=${encodeURIComponent(q)}${c?`&cursor=${encodeURIComponent(c)}`:""}` ;
       const r=await fetch(url);const d=await r.json();
       if(d.posts){
         setPosts(p=>append?[...p,...d.posts]:d.posts);
