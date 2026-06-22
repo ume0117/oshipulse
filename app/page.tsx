@@ -163,7 +163,7 @@ export default function OshiPulse() {
     const now = Date.now();
     const week = 7 * 24 * 60 * 60 * 1000;
     const results = await Promise.all(
-      list.slice(0, 6).map(async (handle, i) => {
+      list.slice(0, 10).map(async (handle, i) => {
         try {
           const r = await fetch(`/api/bluesky?q=${encodeURIComponent(handle)}&type=author`);
           const d = await r.json();
@@ -204,10 +204,11 @@ export default function OshiPulse() {
     setMoodData(mood.map(v=>Math.round((v/maxMood)*100)));
 
     // 次の投稿予測（最も活発な推し）
-    const mostActive = results.sort((a,b)=>b.activity-a.activity)[0];
-    if(mostActive && mostActive.activity > 0){
+    const mostActive = (results as {handle:string;name:string;avatar?:string;activity:number;color:string;}[]).sort((a,b)=>b.activity-a.activity)[0];
+    if(mostActive){
       const posts = allPosts[0] || [];
       if(posts.length >= 2){
+
         const intervals = posts.slice(0,5).map((p:any,i:number)=>{
           if(i===0) return 0;
           return new Date(posts[i-1].record.createdAt).getTime() - new Date(p.record.createdAt).getTime();
