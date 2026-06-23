@@ -285,13 +285,7 @@ export default function OshiPulse() {
     if(!handle||oshiList.includes(handle))return;
     const next=[...oshiList,handle];
     setOshiList(next);localStorage.setItem("oshipulse_oshi",JSON.stringify(next));
-    if(user?.id){
-      const res=await fetch("/api/oshi",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:user.id,handle})});
-      const data=await res.json();
-      console.log("oshi save:",data);
-    } else {
-      console.log("user not logged in:", user);
-    }
+    if(user?.id)await fetch("/api/oshi",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:user.id,handle})}).catch(()=>{});
   };
   const removeOshi=async(h:string)=>{
     const next=oshiList.filter(x=>x!==h);
