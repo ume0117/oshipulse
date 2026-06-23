@@ -116,6 +116,16 @@ export default function OshiPulse() {
     }
     const o=localStorage.getItem("oshipulse_oshi");
     if(o)setOshiList(JSON.parse(o));
+    const su=localStorage.getItem("oshipulse_user");
+    if(su){
+      const usr=JSON.parse(su);
+      fetch(`/api/oshi?userId=${usr.id}`).then(r=>r.json()).then(d=>{
+        if(d.oshi&&d.oshi.length>0){
+          setOshiList(d.oshi);
+          localStorage.setItem("oshipulse_oshi",JSON.stringify(d.oshi));
+        }
+      }).catch(()=>{});
+    }
     return()=>mq.removeEventListener("change",h);
   },[]);
 
@@ -270,15 +280,17 @@ export default function OshiPulse() {
   const doLogout=()=>{setUser(null);localStorage.removeItem("oshipulse_user");};
 
   // ── oshi ──
-  const addOshi=(h:string)=>{
+  const addOshi=async(h:string)=>{
     const handle=h.replace(/^@/,"").trim();
     if(!handle||oshiList.includes(handle))return;
     const next=[...oshiList,handle];
     setOshiList(next);localStorage.setItem("oshipulse_oshi",JSON.stringify(next));
+    if(user?.id)await fetch("/api/oshi",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:user.id,handle})}).catch(()=>{});
   };
-  const removeOshi=(h:string)=>{
+  const removeOshi=async(h:string)=>{
     const next=oshiList.filter(x=>x!==h);
     setOshiList(next);localStorage.setItem("oshipulse_oshi",JSON.stringify(next));
+    if(user?.id)await fetch("/api/oshi",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:user.id,handle:h})}).catch(()=>{});
   };
 
   // ── push ──
